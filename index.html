@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>MiniApp</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      margin: 0;
+      padding: 40px;
+    }
+    #btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      background: #0088cc;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Привет из MiniApp!</h1>
+  <p id="user"></p>
+  <button id="btn">Отправить данные в бот</button>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand(); // разворачивает на весь экран
+
+    document.getElementById("user").innerText = 
+      `Твой username: ${tg.initDataUnsafe.user?.username || "неизвестно"}`;
+
+    document.getElementById("btn").onclick = () => {
+      tg.sendData("Кнопка нажата!");
+    };
+  </script>
+</body>
+</html>
