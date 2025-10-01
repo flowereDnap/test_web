@@ -6,14 +6,17 @@
     <title>Mini App</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
+        /* ==================== CSS VARIABLES ==================== */
         :root {
-            /* Theme Colors - easily customizable */
+            /* Theme Colors */
             --primary-color: #3390ec;
             --secondary-color: #f5f5f5;
+            --success-color: #4CAF50;
             --text-primary: #000000;
             --text-secondary: #999999;
             --border-color: #e0e0e0;
             --bg-color: #ffffff;
+            --overlay-bg: rgba(0, 0, 0, 0.85);
             
             /* Spacing System */
             --spacing-xs: 4px;
@@ -27,22 +30,28 @@
             --radius-sm: 8px;
             --radius-md: 12px;
             --radius-lg: 16px;
+            --radius-xl: 20px;
             
             /* Typography */
+            --font-size-xs: 10px;
             --font-size-sm: 11px;
             --font-size-base: 14px;
             --font-size-md: 16px;
             --font-size-lg: 20px;
             --font-size-xl: 28px;
+            --font-size-2xl: 36px;
+            --font-size-3xl: 48px;
             
             /* Nav Height */
-            --nav-height: 70px;
+            --nav-height: 80px;
             
             /* Transitions */
             --transition-fast: 0.2s ease;
             --transition-normal: 0.3s ease;
+            --transition-slow: 0.5s ease;
         }
 
+        /* ==================== BASE STYLES ==================== */
         * {
             margin: 0;
             padding: 0;
@@ -57,7 +66,7 @@
             color: var(--text-primary);
         }
 
-        /* Page Container */
+        /* ==================== PAGE LAYOUT ==================== */
         .page {
             display: none;
             padding: var(--spacing-xl);
@@ -80,7 +89,7 @@
             }
         }
 
-        /* Typography */
+        /* ==================== TYPOGRAPHY ==================== */
         .page-title {
             font-size: var(--font-size-xl);
             font-weight: 700;
@@ -95,7 +104,7 @@
             color: var(--text-primary);
         }
 
-        /* Card Component */
+        /* ==================== CARD COMPONENT ==================== */
         .card {
             background: var(--secondary-color);
             padding: var(--spacing-lg);
@@ -121,7 +130,263 @@
             line-height: 1.5;
         }
 
-        /* Bottom Navigation */
+        /* ==================== CASH PAGE SPECIFIC ==================== */
+        .cash-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - var(--nav-height) - 40px);
+            gap: var(--spacing-2xl);
+        }
+
+        .balance-section {
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .balance-label {
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
+            margin-bottom: var(--spacing-sm);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .balance-amount {
+            font-size: var(--font-size-3xl);
+            font-weight: 700;
+            color: var(--success-color);
+            margin-bottom: var(--spacing-xs);
+            text-shadow: 0 2px 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .balance-currency {
+            font-size: var(--font-size-lg);
+            color: var(--text-secondary);
+        }
+
+        /* Earn Button */
+        .earn-button {
+            position: relative;
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            border: none;
+            padding: var(--spacing-2xl) var(--spacing-2xl);
+            border-radius: var(--radius-xl);
+            font-size: var(--font-size-lg);
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+            max-width: 320px;
+            box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4);
+            transition: all var(--transition-fast);
+            animation: pulse 2s infinite;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .earn-button:active {
+            transform: scale(0.95);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 8px 24px rgba(76, 175, 80, 0.4);
+            }
+            50% {
+                box-shadow: 0 8px 32px rgba(76, 175, 80, 0.6);
+            }
+        }
+
+        .earn-button-text {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .earn-amount {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+        }
+
+        .earn-cta {
+            font-size: var(--font-size-md);
+            opacity: 0.9;
+        }
+
+        /* Stats Section */
+        .stats-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-md);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .stat-card {
+            background: var(--secondary-color);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--primary-color);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ==================== VIDEO OVERLAY ==================== */
+        .video-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--overlay-bg);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            animation: fadeInOverlay var(--transition-normal);
+        }
+
+        .video-overlay.active {
+            display: flex;
+        }
+
+        @keyframes fadeInOverlay {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .video-container {
+            width: 90%;
+            max-width: 500px;
+            background: #000;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            position: relative;
+            animation: slideUp var(--transition-normal);
+        }
+
+        @keyframes slideUp {
+            from { 
+                transform: translateY(100px);
+                opacity: 0;
+            }
+            to { 
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .video-player {
+            width: 100%;
+            height: auto;
+            display: block;
+            background: #000;
+        }
+
+        .video-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .video-progress-bar {
+            height: 100%;
+            background: var(--success-color);
+            width: 0%;
+            transition: width 0.3s linear;
+        }
+
+        .video-close {
+            position: absolute;
+            top: var(--spacing-md);
+            right: var(--spacing-md);
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: var(--font-size-lg);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .video-close.show {
+            display: flex;
+        }
+
+        /* Reward Animation */
+        .reward-popup {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: white;
+            padding: var(--spacing-2xl);
+            border-radius: var(--radius-xl);
+            text-align: center;
+            z-index: 10000;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+
+        .reward-popup.active {
+            display: block;
+            animation: rewardPop 0.5s ease forwards;
+        }
+
+        @keyframes rewardPop {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.1);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        .reward-emoji {
+            font-size: 64px;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .reward-text {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            color: var(--success-color);
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .reward-amount {
+            font-size: var(--font-size-2xl);
+            font-weight: 800;
+            color: var(--success-color);
+        }
+
+        /* ==================== BOTTOM NAVIGATION ==================== */
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -130,7 +395,7 @@
             display: flex;
             justify-content: space-around;
             padding: var(--spacing-md) 0;
-            padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
+            padding-bottom: max(var(--spacing-xl), env(safe-area-inset-bottom));
             background: var(--bg-color);
             border-top: 1px solid var(--border-color);
             z-index: 1000;
@@ -189,36 +454,24 @@
             font-weight: 500;
         }
 
-        /* Utility Classes */
+        /* ==================== UTILITY CLASSES ==================== */
         .mb-sm { margin-bottom: var(--spacing-sm); }
         .mb-md { margin-bottom: var(--spacing-md); }
         .mb-lg { margin-bottom: var(--spacing-lg); }
 
-        /* Responsive */
+        /* ==================== RESPONSIVE ==================== */
         @media (max-width: 360px) {
             :root {
                 --spacing-xl: 16px;
                 --font-size-xl: 24px;
+                --font-size-2xl: 32px;
+                --font-size-3xl: 40px;
             }
         }
     </style>
 </head>
 <body>
-    <!-- Main Page -->
-    <div id="main" class="page active">
-        <h1 class="page-title" data-i18n="main.title">🏠 Главная</h1>
-        <p class="page-description" data-i18n="main.description">Добро пожаловать в мини-апп!</p>
-        <div class="card">
-            <h3 class="card-title" data-i18n="main.card1.title">Начни здесь</h3>
-            <p class="card-text" data-i18n="main.card1.text">Это основная страница вашего приложения</p>
-        </div>
-        <div class="card">
-            <h3 class="card-title" data-i18n="main.card2.title">Быстрый старт</h3>
-            <p class="card-text" data-i18n="main.card2.text">Перейди в раздел Квесты, чтобы начать</p>
-        </div>
-    </div>
-
-    <!-- Quests Page -->
+    <!-- ==================== QUESTS PAGE ==================== -->
     <div id="quests" class="page">
         <h1 class="page-title" data-i18n="quests.title">🎯 Квесты</h1>
         <p class="page-description" data-i18n="quests.description">Выполняй задания и получай награды</p>
@@ -236,7 +489,41 @@
         </div>
     </div>
 
-    <!-- FAQ Page -->
+    <!-- ==================== CASH PAGE ==================== -->
+    <div id="cash" class="page active">
+        <div class="cash-container">
+            <!-- Balance Display -->
+            <div class="balance-section">
+                <div class="balance-label" data-i18n="cash.balance">Ваш баланс</div>
+                <div class="balance-amount">
+                    <span id="balance-value">12.45</span>
+                    <span class="balance-currency">$</span>
+                </div>
+            </div>
+
+            <!-- Earn Button -->
+            <button class="earn-button" id="earn-btn">
+                <div class="earn-button-text">
+                    <div class="earn-cta" data-i18n="cash.earn">Заработать</div>
+                    <div class="earn-amount">+$0.05 💰</div>
+                </div>
+            </button>
+
+            <!-- Stats -->
+            <div class="stats-section">
+                <div class="stat-card">
+                    <div class="stat-value" id="today-count">12</div>
+                    <div class="stat-label" data-i18n="cash.today">Сегодня</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="total-earned">$145.20</div>
+                    <div class="stat-label" data-i18n="cash.total">Всего заработано</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== FAQ PAGE ==================== -->
     <div id="faq" class="page">
         <h1 class="page-title" data-i18n="faq.title">❓ FAQ</h1>
         <p class="page-description" data-i18n="faq.description">Часто задаваемые вопросы</p>
@@ -254,15 +541,35 @@
         </div>
     </div>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav">   
+    <!-- ==================== VIDEO OVERLAY ==================== -->
+    <div class="video-overlay" id="video-overlay">
+        <div class="video-container">
+            <button class="video-close" id="video-close">✕</button>
+            <video class="video-player" id="video-player" playsinline>
+                <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+            </video>
+            <div class="video-progress">
+                <div class="video-progress-bar" id="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== REWARD POPUP ==================== -->
+    <div class="reward-popup" id="reward-popup">
+        <div class="reward-emoji">🎉</div>
+        <div class="reward-text" data-i18n="cash.earned">Заработано!</div>
+        <div class="reward-amount">+$0.05</div>
+    </div>
+
+    <!-- ==================== BOTTOM NAVIGATION ==================== -->
+    <nav class="bottom-nav">
         <button class="nav-btn" data-page="quests">
             <span class="nav-icon">🎯</span>
             <span class="nav-label" data-i18n="nav.quests">Квесты</span>
         </button>
-        <button class="nav-btn active" data-page="main">
-            <span class="nav-icon">🏠</span>
-            <span class="nav-label" data-i18n="nav.main">Главная</span>
+        <button class="nav-btn active" data-page="cash">
+            <span class="nav-icon">💰</span>
+            <span class="nav-label" data-i18n="nav.cash">Заработок</span>
         </button>
         <button class="nav-btn" data-page="faq">
             <span class="nav-icon">❓</span>
@@ -275,28 +582,25 @@
         const CONFIG = {
             defaultLanguage: 'ru',
             hapticFeedback: true,
-            debugMode: false
+            debugMode: false,
+            rewardAmount: 0.05,
+            videoDuration: 30 // seconds
         };
 
         // ==================== TRANSLATIONS ====================
         const translations = {
             ru: {
                 nav: {
-                    main: 'Главная',
                     quests: 'Квесты',
+                    cash: 'Заработок',
                     faq: 'FAQ'
                 },
-                main: {
-                    title: '🏠 Главная',
-                    description: 'Добро пожаловать в мини-апп!',
-                    card1: {
-                        title: 'Начни здесь',
-                        text: 'Это основная страница вашего приложения'
-                    },
-                    card2: {
-                        title: 'Быстрый старт',
-                        text: 'Перейди в раздел Квесты, чтобы начать'
-                    }
+                cash: {
+                    balance: 'Ваш баланс',
+                    earn: 'Заработать',
+                    today: 'Сегодня',
+                    total: 'Всего заработано',
+                    earned: 'Заработано!'
                 },
                 quests: {
                     title: '🎯 Квесты',
@@ -333,21 +637,16 @@
             },
             en: {
                 nav: {
-                    main: 'Home',
                     quests: 'Quests',
+                    cash: 'Earn',
                     faq: 'FAQ'
                 },
-                main: {
-                    title: '🏠 Home',
-                    description: 'Welcome to the mini app!',
-                    card1: {
-                        title: 'Start Here',
-                        text: 'This is the main page of your application'
-                    },
-                    card2: {
-                        title: 'Quick Start',
-                        text: 'Go to Quests section to begin'
-                    }
+                cash: {
+                    balance: 'Your Balance',
+                    earn: 'Earn',
+                    today: 'Today',
+                    total: 'Total Earned',
+                    earned: 'Earned!'
                 },
                 quests: {
                     title: '🎯 Quests',
@@ -384,12 +683,121 @@
             }
         };
 
-        // ==================== APP CLASS ====================
+        // ==================== APP STATE ====================
+        class AppState {
+            constructor() {
+                this.balance = parseFloat(localStorage.getItem('balance') || '12.45');
+                this.todayCount = parseInt(localStorage.getItem('todayCount') || '12');
+                this.totalEarned = parseFloat(localStorage.getItem('totalEarned') || '145.20');
+            }
+
+            updateBalance(amount) {
+                this.balance += amount;
+                this.todayCount += 1;
+                this.totalEarned += amount;
+                this.save();
+            }
+
+            save() {
+                localStorage.setItem('balance', this.balance.toFixed(2));
+                localStorage.setItem('todayCount', this.todayCount.toString());
+                localStorage.setItem('totalEarned', this.totalEarned.toFixed(2));
+            }
+
+            getBalance() {
+                return this.balance.toFixed(2);
+            }
+
+            getTodayCount() {
+                return this.todayCount;
+            }
+
+            getTotalEarned() {
+                return '$' + this.totalEarned.toFixed(2);
+            }
+        }
+
+        // ==================== VIDEO PLAYER ====================
+        class VideoPlayer {
+            constructor(app) {
+                this.app = app;
+                this.overlay = document.getElementById('video-overlay');
+                this.video = document.getElementById('video-player');
+                this.closeBtn = document.getElementById('video-close');
+                this.progressBar = document.getElementById('progress-bar');
+                this.canSkip = false;
+                this.watchedPercentage = 0;
+                
+                this.init();
+            }
+
+            init() {
+                // Video events
+                this.video.addEventListener('timeupdate', () => this.onProgress());
+                this.video.addEventListener('ended', () => this.onVideoEnd());
+                
+                // Close button
+                this.closeBtn.addEventListener('click', () => this.close());
+            }
+
+            open() {
+                this.overlay.classList.add('active');
+                this.video.currentTime = 0;
+                this.canSkip = false;
+                this.watchedPercentage = 0;
+                this.closeBtn.classList.remove('show');
+                
+                // Play video
+                this.video.play().catch(err => {
+                    console.error('Video play error:', err);
+                });
+                
+                // Haptic
+                if (CONFIG.hapticFeedback && this.app.tg.HapticFeedback) {
+                    this.app.tg.HapticFeedback.impactOccurred('medium');
+                }
+            }
+
+            close() {
+                if (!this.canSkip && this.watchedPercentage < 95) {
+                    // Can't skip before 95% watched
+                    if (CONFIG.hapticFeedback && this.app.tg.HapticFeedback) {
+                        this.app.tg.HapticFeedback.notificationOccurred('error');
+                    }
+                    return;
+                }
+                
+                this.overlay.classList.remove('active');
+                this.video.pause();
+            }
+
+            onProgress() {
+                const percentage = (this.video.currentTime / this.video.duration) * 100;
+                this.watchedPercentage = percentage;
+                this.progressBar.style.width = percentage + '%';
+                
+                // Allow skip after 95%
+                if (percentage >= 95 && !this.canSkip) {
+                    this.canSkip = true;
+                    this.closeBtn.classList.add('show');
+                }
+            }
+
+            onVideoEnd() {
+                this.close();
+                this.app.onVideoComplete();
+            }
+        }
+
+        // ==================== MAIN APP ====================
         class MiniApp {
             constructor() {
                 this.tg = window.Telegram.WebApp;
                 this.currentLang = CONFIG.defaultLanguage;
-                this.currentPage = 'main';
+                this.currentPage = 'cash';
+                this.state = new AppState();
+                this.videoPlayer = new VideoPlayer(this);
+                
                 this.init();
             }
 
@@ -407,6 +815,12 @@
                 
                 // Apply translations
                 this.applyTranslations();
+                
+                // Initialize earn button
+                this.initEarnButton();
+                
+                // Update UI
+                this.updateUI();
                 
                 // Log for debugging
                 if (CONFIG.debugMode) {
@@ -429,7 +843,6 @@
             }
 
             detectLanguage() {
-                // Try to get language from Telegram user
                 const tgLang = this.tg.initDataUnsafe.user?.language_code;
                 
                 if (tgLang && translations[tgLang]) {
@@ -452,78 +865,4 @@
                 });
             }
 
-            getTranslation(key) {
-                const keys = key.split('.');
-                let value = translations[this.currentLang];
-                
-                for (const k of keys) {
-                    if (value && typeof value === 'object') {
-                        value = value[k];
-                    } else {
-                        return null;
-                    }
-                }
-                
-                return value;
-            }
-
-            initNavigation() {
-                const navButtons = document.querySelectorAll('.nav-btn');
-                const pages = document.querySelectorAll('.page');
-
-                navButtons.forEach(button => {
-                    button.addEventListener('click', () => {
-                        const targetPage = button.dataset.page;
-                        this.navigateTo(targetPage);
-                        
-                        // Haptic feedback
-                        if (CONFIG.hapticFeedback && this.tg.HapticFeedback) {
-                            this.tg.HapticFeedback.impactOccurred('light');
-                        }
-                    });
-                });
-            }
-
-            navigateTo(pageId) {
-                const navButtons = document.querySelectorAll('.nav-btn');
-                const pages = document.querySelectorAll('.page');
-                
-                // Remove active class
-                navButtons.forEach(btn => btn.classList.remove('active'));
-                pages.forEach(page => page.classList.remove('active'));
-                
-                // Add active class
-                const targetButton = document.querySelector(`[data-page="${pageId}"]`);
-                const targetPage = document.getElementById(pageId);
-                
-                if (targetButton && targetPage) {
-                    targetButton.classList.add('active');
-                    targetPage.classList.add('active');
-                    this.currentPage = pageId;
-                }
-            }
-
-            setLanguage(lang) {
-                if (translations[lang]) {
-                    this.currentLang = lang;
-                    this.applyTranslations();
-                }
-            }
-        }
-
-        // ==================== INITIALIZE APP ====================
-        let app;
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => {
-                app = new MiniApp();
-            });
-        } else {
-            app = new MiniApp();
-        }
-
-        // Make app globally accessible for debugging
-        window.miniApp = app;
-    </script>
-</body>
-</html>
+            getTranslation
