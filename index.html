@@ -130,10 +130,10 @@
             display: flex;
             justify-content: space-around;
             padding: var(--spacing-md) 0;
+            padding-bottom: max(var(--spacing-md), env(safe-area-inset-bottom));
             background: var(--bg-color);
             border-top: 1px solid var(--border-color);
             z-index: 1000;
-            height: var(--nav-height);
         }
 
         .nav-btn {
@@ -148,8 +148,9 @@
             color: var(--text-secondary);
             transition: all var(--transition-fast);
             border-radius: var(--radius-md);
-            min-width: 70px;
+            min-width: 80px;
             -webkit-tap-highlight-color: transparent;
+            position: relative;
         }
 
         .nav-btn:active {
@@ -158,7 +159,20 @@
 
         .nav-btn.active {
             color: var(--primary-color);
-            background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+            background: color-mix(in srgb, var(--primary-color) 15%, transparent);
+            box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-color) 25%, transparent);
+        }
+
+        .nav-btn.active::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 3px;
+            background: var(--primary-color);
+            border-radius: 0 0 3px 3px;
         }
 
         .nav-icon {
@@ -241,7 +255,7 @@
     </div>
 
     <!-- Bottom Navigation -->
-    <nav class="bottom-nav">
+    <nav class="bottom-nav">   
         <button class="nav-btn" data-page="quests">
             <span class="nav-icon">🎯</span>
             <span class="nav-label" data-i18n="nav.quests">Квесты</span>
@@ -513,4 +527,3 @@
     </script>
 </body>
 </html>
-
