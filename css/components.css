@@ -1,0 +1,165 @@
+/* ==================== CARD COMPONENT ==================== */
+.card {
+    background: var(--secondary-color);
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-md);
+    transition: transform var(--transition-fast);
+}
+
+.card:active {
+    transform: scale(0.98);
+}
+
+.card-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.card-text {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* ==================== VIDEO OVERLAY ==================== */
+.video-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--overlay-bg);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInOverlay var(--transition-normal);
+}
+
+.video-overlay.active {
+    display: flex;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.video-container {
+    width: 90%;
+    max-width: 500px;
+    background: #000;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    animation: slideUp var(--transition-normal);
+}
+
+@keyframes slideUp {
+    from { 
+        transform: translateY(100px);
+        opacity: 0;
+    }
+    to { 
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.video-player {
+    width: 100%;
+    height: auto;
+    display: block;
+    background: #000;
+}
+
+.video-progress {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.video-progress-bar {
+    height: 100%;
+    background: var(--success-color);
+    width: 0%;
+    transition: width 0.3s linear;
+}
+
+.video-close {
+    position: absolute;
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    background: rgba(0, 0, 0, 0.5);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: var(--font-size-lg);
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.video-close.show {
+    display: flex;
+}
+
+/* ==================== REWARD POPUP ==================== */
+.reward-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    background: white;
+    padding: var(--spacing-2xl);
+    border-radius: var(--radius-xl);
+    text-align: center;
+    z-index: 10000;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: none;
+}
+
+.reward-popup.active {
+    display: block;
+    animation: rewardPop 0.5s ease forwards;
+}
+
+@keyframes rewardPop {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+}
+
+.reward-emoji {
+    font-size: 64px;
+    margin-bottom: var(--spacing-md);
+}
+
+.reward-text {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    color: var(--success-color);
+    margin-bottom: var(--spacing-sm);
+}
+
+.reward-amount {
+    font-size: var(--font-size-2xl);
+    font-weight: 800;
+    color: var(--success-color);
+}
