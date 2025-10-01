@@ -1,43 +1,515 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <title>MiniApp</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      background: #f0f0f0;
-      margin: 0;
-      padding: 40px;
-    }
-    #btn {
-      padding: 12px 20px;
-      border: none;
-      border-radius: 8px;
-      background: #0088cc;
-      color: #fff;
-      font-size: 16px;
-      cursor: pointer;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            /* Theme Colors - easily customizable */
+            --primary-color: #3390ec;
+            --secondary-color: #f5f5f5;
+            --text-primary: #000000;
+            --text-secondary: #999999;
+            --border-color: #e0e0e0;
+            --bg-color: #ffffff;
+            
+            /* Spacing System */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 12px;
+            --spacing-lg: 16px;
+            --spacing-xl: 20px;
+            --spacing-2xl: 24px;
+            
+            /* Border Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            
+            /* Typography */
+            --font-size-sm: 11px;
+            --font-size-base: 14px;
+            --font-size-md: 16px;
+            --font-size-lg: 20px;
+            --font-size-xl: 28px;
+            
+            /* Nav Height */
+            --nav-height: 70px;
+            
+            /* Transitions */
+            --transition-fast: 0.2s ease;
+            --transition-normal: 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+            padding-bottom: var(--nav-height);
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+        }
+
+        /* Page Container */
+        .page {
+            display: none;
+            padding: var(--spacing-xl);
+            min-height: calc(100vh - var(--nav-height));
+            animation: fadeIn var(--transition-normal);
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { 
+                opacity: 0; 
+                transform: translateY(10px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        /* Typography */
+        .page-title {
+            font-size: var(--font-size-xl);
+            font-weight: 700;
+            margin-bottom: var(--spacing-xl);
+            color: var(--text-primary);
+        }
+
+        .page-description {
+            font-size: var(--font-size-md);
+            line-height: 1.6;
+            margin-bottom: var(--spacing-lg);
+            color: var(--text-primary);
+        }
+
+        /* Card Component */
+        .card {
+            background: var(--secondary-color);
+            padding: var(--spacing-lg);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--spacing-md);
+            transition: transform var(--transition-fast);
+        }
+
+        .card:active {
+            transform: scale(0.98);
+        }
+
+        .card-title {
+            font-size: var(--font-size-lg);
+            font-weight: 600;
+            margin-bottom: var(--spacing-sm);
+            color: var(--text-primary);
+        }
+
+        .card-text {
+            font-size: var(--font-size-base);
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-around;
+            padding: var(--spacing-md) 0;
+            background: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+            z-index: 1000;
+            height: var(--nav-height);
+        }
+
+        .nav-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: var(--spacing-xs);
+            padding: var(--spacing-sm) var(--spacing-lg);
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: all var(--transition-fast);
+            border-radius: var(--radius-md);
+            min-width: 70px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .nav-btn.active {
+            color: var(--primary-color);
+            background: color-mix(in srgb, var(--primary-color) 10%, transparent);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+            transition: transform var(--transition-fast);
+        }
+
+        .nav-btn.active .nav-icon {
+            transform: scale(1.1);
+        }
+
+        .nav-label {
+            font-size: var(--font-size-sm);
+            font-weight: 500;
+        }
+
+        /* Utility Classes */
+        .mb-sm { margin-bottom: var(--spacing-sm); }
+        .mb-md { margin-bottom: var(--spacing-md); }
+        .mb-lg { margin-bottom: var(--spacing-lg); }
+
+        /* Responsive */
+        @media (max-width: 360px) {
+            :root {
+                --spacing-xl: 16px;
+                --font-size-xl: 24px;
+            }
+        }
+    </style>
 </head>
 <body>
-  <h1>Привет из MiniApp!</h1>
-  <p id="user"></p>
-  <button id="btn">Отправить данные в бот</button>
+    <!-- Main Page -->
+    <div id="main" class="page active">
+        <h1 class="page-title" data-i18n="main.title">🏠 Главная</h1>
+        <p class="page-description" data-i18n="main.description">Добро пожаловать в мини-апп!</p>
+        <div class="card">
+            <h3 class="card-title" data-i18n="main.card1.title">Начни здесь</h3>
+            <p class="card-text" data-i18n="main.card1.text">Это основная страница вашего приложения</p>
+        </div>
+        <div class="card">
+            <h3 class="card-title" data-i18n="main.card2.title">Быстрый старт</h3>
+            <p class="card-text" data-i18n="main.card2.text">Перейди в раздел Квесты, чтобы начать</p>
+        </div>
+    </div>
 
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand(); // разворачивает на весь экран
+    <!-- Quests Page -->
+    <div id="quests" class="page">
+        <h1 class="page-title" data-i18n="quests.title">🎯 Квесты</h1>
+        <p class="page-description" data-i18n="quests.description">Выполняй задания и получай награды</p>
+        <div class="card">
+            <h3 class="card-title" data-i18n="quests.quest1.title">Квест 1</h3>
+            <p class="card-text" data-i18n="quests.quest1.text">Описание первого квеста</p>
+        </div>
+        <div class="card">
+            <h3 class="card-title" data-i18n="quests.quest2.title">Квест 2</h3>
+            <p class="card-text" data-i18n="quests.quest2.text">Описание второго квеста</p>
+        </div>
+        <div class="card">
+            <h3 class="card-title" data-i18n="quests.quest3.title">Квест 3</h3>
+            <p class="card-text" data-i18n="quests.quest3.text">Описание третьего квеста</p>
+        </div>
+    </div>
 
-    document.getElementById("user").innerText = 
-      `Твой username: ${tg.initDataUnsafe.user?.username || "неизвестно"}`;
+    <!-- FAQ Page -->
+    <div id="faq" class="page">
+        <h1 class="page-title" data-i18n="faq.title">❓ FAQ</h1>
+        <p class="page-description" data-i18n="faq.description">Часто задаваемые вопросы</p>
+        <div class="card">
+            <h3 class="card-title" data-i18n="faq.question1.title">Как это работает?</h3>
+            <p class="card-text" data-i18n="faq.question1.text">Здесь будет ответ на вопрос</p>
+        </div>
+        <div class="card">
+            <h3 class="card-title" data-i18n="faq.question2.title">Как получить награду?</h3>
+            <p class="card-text" data-i18n="faq.question2.text">Здесь будет ответ на вопрос</p>
+        </div>
+        <div class="card">
+            <h3 class="card-title" data-i18n="faq.question3.title">Техническая поддержка</h3>
+            <p class="card-text" data-i18n="faq.question3.text">Здесь будет контактная информация</p>
+        </div>
+    </div>
 
-    document.getElementById("btn").onclick = () => {
-      tg.sendData("Кнопка нажата!");
-    };
-  </script>
+    <!-- Bottom Navigation -->
+    <nav class="bottom-nav">
+        <button class="nav-btn active" data-page="main">
+            <span class="nav-icon">🏠</span>
+            <span class="nav-label" data-i18n="nav.main">Главная</span>
+        </button>
+        <button class="nav-btn" data-page="quests">
+            <span class="nav-icon">🎯</span>
+            <span class="nav-label" data-i18n="nav.quests">Квесты</span>
+        </button>
+        <button class="nav-btn" data-page="faq">
+            <span class="nav-icon">❓</span>
+            <span class="nav-label" data-i18n="nav.faq">FAQ</span>
+        </button>
+    </nav>
+
+    <script>
+        // ==================== CONFIG ====================
+        const CONFIG = {
+            defaultLanguage: 'ru',
+            hapticFeedback: true,
+            debugMode: false
+        };
+
+        // ==================== TRANSLATIONS ====================
+        const translations = {
+            ru: {
+                nav: {
+                    main: 'Главная',
+                    quests: 'Квесты',
+                    faq: 'FAQ'
+                },
+                main: {
+                    title: '🏠 Главная',
+                    description: 'Добро пожаловать в мини-апп!',
+                    card1: {
+                        title: 'Начни здесь',
+                        text: 'Это основная страница вашего приложения'
+                    },
+                    card2: {
+                        title: 'Быстрый старт',
+                        text: 'Перейди в раздел Квесты, чтобы начать'
+                    }
+                },
+                quests: {
+                    title: '🎯 Квесты',
+                    description: 'Выполняй задания и получай награды',
+                    quest1: {
+                        title: 'Квест 1',
+                        text: 'Описание первого квеста'
+                    },
+                    quest2: {
+                        title: 'Квест 2',
+                        text: 'Описание второго квеста'
+                    },
+                    quest3: {
+                        title: 'Квест 3',
+                        text: 'Описание третьего квеста'
+                    }
+                },
+                faq: {
+                    title: '❓ FAQ',
+                    description: 'Часто задаваемые вопросы',
+                    question1: {
+                        title: 'Как это работает?',
+                        text: 'Здесь будет ответ на вопрос'
+                    },
+                    question2: {
+                        title: 'Как получить награду?',
+                        text: 'Здесь будет ответ на вопрос'
+                    },
+                    question3: {
+                        title: 'Техническая поддержка',
+                        text: 'Здесь будет контактная информация'
+                    }
+                }
+            },
+            en: {
+                nav: {
+                    main: 'Home',
+                    quests: 'Quests',
+                    faq: 'FAQ'
+                },
+                main: {
+                    title: '🏠 Home',
+                    description: 'Welcome to the mini app!',
+                    card1: {
+                        title: 'Start Here',
+                        text: 'This is the main page of your application'
+                    },
+                    card2: {
+                        title: 'Quick Start',
+                        text: 'Go to Quests section to begin'
+                    }
+                },
+                quests: {
+                    title: '🎯 Quests',
+                    description: 'Complete tasks and earn rewards',
+                    quest1: {
+                        title: 'Quest 1',
+                        text: 'Description of the first quest'
+                    },
+                    quest2: {
+                        title: 'Quest 2',
+                        text: 'Description of the second quest'
+                    },
+                    quest3: {
+                        title: 'Quest 3',
+                        text: 'Description of the third quest'
+                    }
+                },
+                faq: {
+                    title: '❓ FAQ',
+                    description: 'Frequently asked questions',
+                    question1: {
+                        title: 'How does it work?',
+                        text: 'Answer to the question will be here'
+                    },
+                    question2: {
+                        title: 'How to get a reward?',
+                        text: 'Answer to the question will be here'
+                    },
+                    question3: {
+                        title: 'Technical Support',
+                        text: 'Contact information will be here'
+                    }
+                }
+            }
+        };
+
+        // ==================== APP CLASS ====================
+        class MiniApp {
+            constructor() {
+                this.tg = window.Telegram.WebApp;
+                this.currentLang = CONFIG.defaultLanguage;
+                this.currentPage = 'main';
+                this.init();
+            }
+
+            init() {
+                // Initialize Telegram WebApp
+                this.tg.expand();
+                this.tg.ready();
+                this.applyTelegramTheme();
+                
+                // Detect user language
+                this.detectLanguage();
+                
+                // Initialize navigation
+                this.initNavigation();
+                
+                // Apply translations
+                this.applyTranslations();
+                
+                // Log for debugging
+                if (CONFIG.debugMode) {
+                    console.log('User:', this.tg.initDataUnsafe.user);
+                    console.log('Language:', this.currentLang);
+                }
+            }
+
+            applyTelegramTheme() {
+                const root = document.documentElement;
+                const theme = this.tg.themeParams;
+                
+                if (theme.bg_color) root.style.setProperty('--bg-color', theme.bg_color);
+                if (theme.text_color) root.style.setProperty('--text-primary', theme.text_color);
+                if (theme.hint_color) root.style.setProperty('--text-secondary', theme.hint_color);
+                if (theme.button_color) root.style.setProperty('--primary-color', theme.button_color);
+                if (theme.secondary_bg_color) root.style.setProperty('--secondary-color', theme.secondary_bg_color);
+                
+                document.body.style.backgroundColor = theme.bg_color || '#ffffff';
+            }
+
+            detectLanguage() {
+                // Try to get language from Telegram user
+                const tgLang = this.tg.initDataUnsafe.user?.language_code;
+                
+                if (tgLang && translations[tgLang]) {
+                    this.currentLang = tgLang;
+                } else if (tgLang && tgLang.startsWith('ru')) {
+                    this.currentLang = 'ru';
+                } else if (translations[tgLang?.substring(0, 2)]) {
+                    this.currentLang = tgLang.substring(0, 2);
+                }
+            }
+
+            applyTranslations() {
+                const elements = document.querySelectorAll('[data-i18n]');
+                elements.forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    const translation = this.getTranslation(key);
+                    if (translation) {
+                        el.textContent = translation;
+                    }
+                });
+            }
+
+            getTranslation(key) {
+                const keys = key.split('.');
+                let value = translations[this.currentLang];
+                
+                for (const k of keys) {
+                    if (value && typeof value === 'object') {
+                        value = value[k];
+                    } else {
+                        return null;
+                    }
+                }
+                
+                return value;
+            }
+
+            initNavigation() {
+                const navButtons = document.querySelectorAll('.nav-btn');
+                const pages = document.querySelectorAll('.page');
+
+                navButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        const targetPage = button.dataset.page;
+                        this.navigateTo(targetPage);
+                        
+                        // Haptic feedback
+                        if (CONFIG.hapticFeedback && this.tg.HapticFeedback) {
+                            this.tg.HapticFeedback.impactOccurred('light');
+                        }
+                    });
+                });
+            }
+
+            navigateTo(pageId) {
+                const navButtons = document.querySelectorAll('.nav-btn');
+                const pages = document.querySelectorAll('.page');
+                
+                // Remove active class
+                navButtons.forEach(btn => btn.classList.remove('active'));
+                pages.forEach(page => page.classList.remove('active'));
+                
+                // Add active class
+                const targetButton = document.querySelector(`[data-page="${pageId}"]`);
+                const targetPage = document.getElementById(pageId);
+                
+                if (targetButton && targetPage) {
+                    targetButton.classList.add('active');
+                    targetPage.classList.add('active');
+                    this.currentPage = pageId;
+                }
+            }
+
+            setLanguage(lang) {
+                if (translations[lang]) {
+                    this.currentLang = lang;
+                    this.applyTranslations();
+                }
+            }
+        }
+
+        // ==================== INITIALIZE APP ====================
+        let app;
+        
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                app = new MiniApp();
+            });
+        } else {
+            app = new MiniApp();
+        }
+
+        // Make app globally accessible for debugging
+        window.miniApp = app;
+    </script>
 </body>
 </html>
