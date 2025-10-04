@@ -102,13 +102,8 @@ class MiniApp {
 // ==================== INITIALIZE APP ====================
 let app;
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-        app = new MiniApp();
-    });
-} else {
+// Wait for all scripts and DOM to load
+window.addEventListener('load', () => {
     app = new MiniApp();
-}
-
-// Make app globally accessible for debugging
-window.miniApp = app;
+    window.miniApp = app; // Make globally accessible for debugging
+});
