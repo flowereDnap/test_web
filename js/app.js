@@ -14,7 +14,6 @@ class MiniApp {
         // Initialize Telegram WebApp
         this.tg.expand();
         this.tg.ready();
-        this.applyTelegramTheme();
         
         // Detect user language
         this.detectLanguage();
