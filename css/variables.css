@@ -1,29 +1,30 @@
 /* ==================== CSS VARIABLES ==================== */
 :root {
-    /* Theme Colors */
-    --primary-color: #3390ec;
-    --secondary-color: #f5f5f5;
-    --success-color: #4CAF50;
-    --text-primary: #000000;
-    --text-secondary: #999999;
-    --border-color: #e0e0e0;
-    --bg-color: #ffffff;
-    --overlay-bg: rgba(0, 0, 0, 0.85);
-    
+    /* Theme Colors (cash.css vibe) */
+    --primary-color: #d4af37;       /* Gold */
+    --secondary-color: rgba(255,255,255,0.02); /* Glassy panel */
+    --accent-color: #00d4ff;        /* Cyan accent */
+    --text-primary: #eef6fb;        /* Light text */
+    --text-secondary: #9aa4b2;      /* Muted text */
+    --border-color: rgba(255,255,255,0.04);
+    --bg-1: #0b1020;
+    --bg-2: #11131a;
+    --overlay-bg: rgba(0,0,0,0.85);
+
     /* Spacing System */
-    --spacing-xs: 4px;
-    --spacing-sm: 8px;
-    --spacing-md: 12px;
-    --spacing-lg: 16px;
-    --spacing-xl: 20px;
-    --spacing-2xl: 24px;
-    
+    --spacing-xs: 6px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 20px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 28px;
+
     /* Border Radius */
     --radius-sm: 8px;
     --radius-md: 12px;
     --radius-lg: 16px;
     --radius-xl: 20px;
-    
+
     /* Typography */
     --font-size-xs: 10px;
     --font-size-sm: 11px;
@@ -33,10 +34,10 @@
     --font-size-xl: 28px;
     --font-size-2xl: 36px;
     --font-size-3xl: 48px;
-    
+
     /* Nav Height */
     --nav-height: 80px;
-    
+
     /* Transitions */
     --transition-fast: 0.2s ease;
     --transition-normal: 0.3s ease;
@@ -44,11 +45,21 @@
 }
 
 /* ==================== RESPONSIVE ==================== */
-@media (max-width: 360px) {
+@media (max-width: 780px) {
     :root {
-        --spacing-xl: 16px;
         --font-size-xl: 24px;
         --font-size-2xl: 32px;
         --font-size-3xl: 40px;
+        --spacing-lg: 16px;
+        --spacing-xl: 16px;
+    }
+}
+
+@media (max-width: 360px) {
+    :root {
+        --spacing-xl: 14px;
+        --font-size-xl: 20px;
+        --font-size-2xl: 28px;
+        --font-size-3xl: 36px;
     }
 }
