@@ -1,7 +1,5 @@
-/* ==================== CASH PAGE — THEANO DIDOT (applied site-wide) ==================== */
-/* NOTE: place Theano Didot font files into /fonts/ and adjust src paths if loading locally.
-   Fallbacks included for Cyrillic/other scripts. */
-
+/* ==================== CASH PAGE & GLOBAL STYLING ==================== */
+/* Fonts: Theano Didot for headings, Georgia for fallback */
 @font-face{
   font-family: "Theano Didot";
   src: url("/fonts/TheanoDidot-Regular.woff2") format("woff2"),
@@ -19,64 +17,44 @@
   font-display: swap;
 }
 
-/* Fallback stack: serif fallback that supports Cyrillic/latin */
-:root{
-  --bg-1:#0b1020;
-  --bg-2:#11131a;
-  --gold:#d4af37;
-  --accent:#00d4ff;
-  --muted:#9aa4b2;
-  --panel: rgba(255,255,255,0.02);
-  --glass-border: 1px solid rgba(255,255,255,0.04);
-  --radius-xl:14px;
-  --radius-md:10px;
-  --spacing-xs:6px;
-  --spacing-sm:12px;
-  --spacing-md:16px;
-  --spacing-lg:20px;
-  --shadow-lg: 0 16px 48px rgba(2,6,23,0.7);
-  --transition-fast:220ms;
-}
-
-/* Apply site-wide */
+/* ==================== GLOBAL BODY / PAGE ==================== */
 body, .page {
-  font-family: "Georgia", "Times New Roman", Times, serif;
-  background: linear-gradient(180deg,var(--bg-1),var(--bg-2));
-  color: #eef6fb;
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-  letter-spacing: 0.6px; /* elegant wide tracking */
-  line-height: 1.3;
+    font-family: "Georgia", "Times New Roman", Times, serif;
+    background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: 0.6px;
+    line-height: 1.3;
 }
 
-/* CASH container */
+/* ==================== CASH / STATS CONTAINERS ==================== */
 .cash-container{
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:flex-start;
-  gap:var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--spacing-lg);
   padding: var(--spacing-lg);
-  min-height: calc(100vh - var(--nav-height,64px) - 40px);
+  min-height: calc(100vh - var(--nav-height) - 40px);
 }
 
-/* Balance Section */
 .balance-section{
-  width:100%;
-  max-width:620px;
+  width: 100%;
+  max-width: 620px;
   background: linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0.008));
   border-radius: var(--radius-xl);
   padding: calc(var(--spacing-lg) + 6px);
   border: var(--glass-border);
   box-shadow: var(--shadow-lg);
-  text-align:center;
+  text-align: center;
   backdrop-filter: blur(6px);
 }
 
 .balance-label{
   display:block;
   font-size:12px;
-  color:var(--muted);
+  color:var(--text-secondary);
   letter-spacing:2px;
   margin-bottom:8px;
   font-weight:700;
@@ -88,13 +66,11 @@ body, .page {
   justify-content:center;
   gap:10px;
   font-weight:700;
-  margin-bottom:6px;
 }
 
-/* numeric look: gold + subtle stroke for premium feeling */
 #balance-value{
   font-size:48px;
-  color: var(--gold);
+  color: var(--primary-color);
   -webkit-text-stroke: 0.6px rgba(0,0,0,0.18);
   text-shadow: 0 10px 38px rgba(212,175,55,0.06);
   font-variant-numeric: tabular-nums;
@@ -103,12 +79,12 @@ body, .page {
 
 .balance-currency{
   font-size:18px;
-  color:var(--muted);
+  color:var(--text-secondary);
   transform: translateY(-6px);
   font-weight:700;
 }
 
-/* Earn button — large premium CTA */
+/* ==================== EARN BUTTON ==================== */
 .earn-button{
   width:100%;
   max-width:520px;
@@ -135,11 +111,16 @@ body, .page {
   transform: translateY(-2px) scale(0.995);
 }
 
-/* Inner CTA typography */
-.earn-button-text{ display:flex; flex-direction:column; align-items:center; gap:6px; }
+/* Inner CTA */
+.earn-button-text{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:6px;
+}
 .earn-cta{
   font-size:13px;
-  color:var(--muted);
+  color:var(--text-secondary);
   text-transform:uppercase;
   letter-spacing:1.6px;
   font-weight:800;
@@ -147,27 +128,24 @@ body, .page {
 .earn-amount{
   font-size:22px;
   font-weight:700;
-  /* gradient text for modern premium look */
-  background: linear-gradient(90deg,var(--accent), #3bf0c8);
+  background: linear-gradient(90deg,var(--accent-color), #3bf0c8);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
   text-shadow: 0 8px 28px rgba(0,212,255,0.04);
 }
 
-/* Stats grid */
+/* ==================== STATS GRID ==================== */
 .stats-section{
   width:100%;
   max-width:620px;
   display:grid;
-  grid-template-columns: repeat(2,1fr);
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
   gap:var(--spacing-md);
 }
 
-/* Each stat item */
 .stat-item{ display:flex; flex-direction:column; gap:10px; }
 
-/* Cards */
 .stat-card{
   padding: var(--spacing-md);
   border-radius: var(--radius-md);
@@ -177,7 +155,7 @@ body, .page {
   backdrop-filter: blur(6px);
   transition: transform var(--transition-fast), box-shadow var(--transition-fast);
 }
-.stat-card:hover{ transform: translateY(-6px); box-shadow: 0 20px 48px rgba(2,6,23,0.55); }
+.stat-button:hover{ transform: translateY(-6px); box-shadow: 0 20px 48px rgba(2,6,23,0.55); }
 
 .stat-value{
   font-size:20px;
@@ -186,19 +164,18 @@ body, .page {
   margin-bottom:6px;
   letter-spacing:0.6px;
 }
-#total-earned{ color: var(--gold); font-weight:800; }
+#total-earned{ color: var(--primary-color); font-weight:800; }
 
-/* labels and buttons */
 .stat-label{
   font-size:11px;
-  text-transform:uppercase;
-  color:var(--muted);
+  color:var(--text-secondary);
   letter-spacing:1.4px;
   font-weight:700;
 }
 
 .stat-button{
   padding:12px;
+  text-align:center;
   border-radius:10px;
   background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
   border: 1px solid rgba(255,255,255,0.04);
@@ -217,14 +194,69 @@ body, .page {
   box-shadow: 0 12px 36px rgba(212,175,55,0.06);
 }
 
-/* Responsive tweaks */
+/* ==================== VIDEO / REWARD ==================== */
+
+.video-progress-bar { background: var(--accent-color); }
+.reward-popup { background: var(--secondary-color);
+                color: var(--text-primary);
+                display: none; }
+.reward-text, .reward-amount { color: var(--primary-color); }
+.video-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.video-overlay.active {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.video-close.show {
+    display: block;
+}
+.video-container {
+    width: 90%;
+    max-width: 1000px; /* по желанию */
+    height: auto;
+    max-height: 90%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.video-player {
+    width: 100%;
+    height: auto;
+    max-height: 100%;
+    object-fit: contain; /* чтобы видео не обрезалось и масштабировалось полностью */
+}
+
+
+/* ==================== RESPONSIVE ==================== */
 @media (max-width: 780px){
-  .stats-section{ grid-template-columns: 1fr; max-width: 420px; }
+  /*.stats-section{ grid-template-columns: 1fr; max-width: 420px; }*/
+  .stats-section{ max-width: 420px; }
   #balance-value{ font-size:34px; }
   .earn-button{ max-width:420px; padding:12px; border-radius:12px; }
   .cash-container{ padding:12px; gap:14px; }
+  .stat-value{ font-size:18px; }
 }
 
-/* Accessibility: keep readable contrasts */
-:root { --focus-outline: 3px solid rgba(0,212,255,0.12); }
-.earn-button:focus, .stat-button:focus { outline: none; box-shadow: var(--focus-outline); border-color: rgba(0,212,255,0.12); }
+@media (max-width: 360px){
+  #balance-value{ font-size:28px; }
+  .earn-amount{ font-size:18px; }
+  .earn-cta{ font-size:11px; }
+  .stat-label{ font-size:10px; }
+}

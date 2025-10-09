@@ -18,7 +18,10 @@ class VideoPlayer {
         this.video.addEventListener('ended', () => this.onVideoEnd());
         
         // Close button
-        this.closeBtn.addEventListener('click', () => this.close());
+        this.closeBtn.addEventListener('click', (e) => {
+    console.log('video close clicked', this.canSkip, this.watchedPercentage);
+    this.close();
+});
         
         // Prevent seeking
         this.video.addEventListener('seeking', (e) => {

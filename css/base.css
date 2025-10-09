@@ -8,6 +8,7 @@
 body {
     font-family: "Georgia", "Times New Roman", Times, serif;
     overflow-x: hidden;
+    overflow-y: hidden;
     padding-bottom: var(--nav-height);
     background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
     color: var(--text-primary);
@@ -17,9 +18,15 @@ body {
 
 /* ==================== PAGE LAYOUT ==================== */
 .page {
+     position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow-x: hidden; 
+    overflow-y: hidden;/* убираем скролл внутри страницы */
     display: none;
-    padding: var(--spacing-xl);
-    min-height: calc(100vh - var(--nav-height));
+    /*animation: none;  если хочешь убрать “летание” */
     animation: fadeIn var(--transition-normal);
 }
 

@@ -5,5 +5,6 @@ const CONFIG = {
     debugMode: false,
     rewardAmount: 0.05,
     videoDuration: 30, // seconds
-    videoRequiredWatchPercentage: 95 // Must watch 95% to get reward
+    videoRequiredWatchPercentage: 5
+     // Must watch 95% to get reward
 };
