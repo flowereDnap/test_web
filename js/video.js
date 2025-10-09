@@ -1,43 +1,84 @@
-// ==================== NAVIGATION ====================
-class Navigation {
+// ==================== VIDEO PLAYER ====================
+class VideoPlayer {
     constructor(app) {
         this.app = app;
-        this.currentPage = 'cash';
+        this.overlay = document.getElementById('video-overlay');
+        this.video = document.getElementById('video-player');
+        this.closeBtn = document.getElementById('video-close');
+        this.progressBar = document.getElementById('progress-bar');
+        this.canSkip = false;
+        this.watchedPercentage = 0;
+        
         this.init();
     }
 
     init() {
-        const navButtons = document.querySelectorAll('.nav-btn');
-
-        navButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const targetPage = button.dataset.page;
-                this.navigateTo(targetPage);
-                
-                // Haptic feedback
-                if (CONFIG.hapticFeedback && this.app.tg.HapticFeedback) {
-                    this.app.tg.HapticFeedback.impactOccurred('light');
-                }
-            });
+        // Video events
+        this.video.addEventListener('timeupdate', () => this.onProgress());
+        this.video.addEventListener('ended', () => this.onVideoEnd());
+        
+        // Close button
+        this.closeBtn.addEventListener('click', () => this.close());
+        
+        // Prevent seeking
+        this.video.addEventListener('seeking', (e) => {
+            if (this.video.currentTime > this.video.dataset.maxTime || 0) {
+                this.video.currentTime = this.video.dataset.maxTime || 0;
+            }
         });
     }
 
-    navigateTo(pageId) {
-        const navButtons = document.querySelectorAll('.nav-btn');
-        const pages = document.querySelectorAll('.page');
+    open() {
+        this.overlay.classList.add('active');
+        this.video.currentTime = 0;
+        this.video.dataset.maxTime = 0;
+        this.canSkip = false;
+        this.watchedPercentage = 0;
+        this.closeBtn.classList.remove('show');
         
-        // Remove active class
-        navButtons.forEach(btn => btn.classList.remove('active'));
-        pages.forEach(page => page.classList.remove('active'));
+        // Play video
+        this.video.play().catch(err => {
+            console.error('Video play error:', err);
+        });
         
-        // Add active class
-        const targetButton = document.querySelector(`[data-page="${pageId}"]`);
-        const targetPage = document.getElementById(pageId);
-        
-        if (targetButton && targetPage) {
-            targetButton.classList.add('active');
-            targetPage.classList.add('active');
-            this.currentPage = pageId;
+        // Haptic
+        if (CONFIG.hapticFeedback && this.app.tg.HapticFeedback) {
+            this.app.tg.HapticFeedback.impactOccurred('medium');
         }
+    }
+
+    close() {
+        if (!this.canSkip && this.watchedPercentage < CONFIG.videoRequiredWatchPercentage) {
+            // Can't skip before required percentage
+            if (CONFIG.hapticFeedback && this.app.tg.HapticFeedback) {
+                this.app.tg.HapticFeedback.notificationOccurred('error');
+            }
+            return;
+        }
+        
+        this.overlay.classList.remove('active');
+        this.video.pause();
+    }
+
+    onProgress() {
+        const percentage = (this.video.currentTime / this.video.duration) * 100;
+        this.watchedPercentage = percentage;
+        this.progressBar.style.width = percentage + '%';
+        
+        // Track max watched time to prevent seeking back
+        if (this.video.currentTime > (this.video.dataset.maxTime || 0)) {
+            this.video.dataset.maxTime = this.video.currentTime;
+        }
+        
+        // Allow skip after required percentage
+        if (percentage >= CONFIG.videoRequiredWatchPercentage && !this.canSkip) {
+            this.canSkip = true;
+            this.closeBtn.classList.add('show');
+        }
+    }
+
+    onVideoEnd() {
+        this.close();
+        this.app.onVideoComplete();
     }
 }

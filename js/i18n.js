@@ -7,11 +7,13 @@ const translations = {
             faq: 'FAQ'
         },
         cash: {
-            balance: 'Ваш баланс',
+            balance: 'Сегодня заработано',
             earn: 'Заработать',
             today: 'Сегодня',
             total: 'Всего заработано',
-            earned: 'Заработано!'
+            earned: 'Заработано!',
+            history: 'История',
+            withdraw: 'Вывести'
         },
         quests: {
             title: '🎯 Квесты',
@@ -57,7 +59,9 @@ const translations = {
             earn: 'Earn',
             today: 'Today',
             total: 'Total Earned',
-            earned: 'Earned!'
+            earned: 'Earned!',
+            history: 'History',
+            withdraw: 'Withdraw'
         },
         quests: {
             title: '🎯 Quests',

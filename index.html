@@ -39,7 +39,7 @@
         <div class="cash-container">
             <!-- Balance Display -->
             <div class="balance-section">
-                <div class="balance-label" data-i18n="cash.balance">Ваш баланс</div>
+                <div class="balance-label" data-i18n="cash.balance">Сегодня заработано</div>
                 <div class="balance-amount">
                     <span id="balance-value">12.45</span>
                     <span class="balance-currency">$</span>
@@ -53,18 +53,28 @@
                     <div class="earn-amount">+$0.05 💰</div>
                 </div>
             </button>
-
             <!-- Stats -->
             <div class="stats-section">
-                <div class="stat-card">
-                    <div class="stat-value" id="today-count">12</div>
-                    <div class="stat-label" data-i18n="cash.today">Сегодня</div>
+                <div class="stat-item">
+                    <div class="stat-card">
+                        <div class="stat-value" id="today-count">12</div>
+                        <div class="stat-label" data-i18n="cash.today">Сегодня</div>
+                    </div>
+                    <div class="stat-button">
+                       <span>Увеличить Лимит</span>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="total-earned">$145.20</div>
-                    <div class="stat-label" data-i18n="cash.total">Всего заработано</div>
+                <div class="stat-item">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-earned">$145.20</div>
+                        <div class="stat-label" data-i18n="cash.total">Всего заработано</div>
+                    </div>
+                    <div class="stat-button">
+                       <span>ВЫВЕСТИ</span>
+                    </div>
                 </div>
             </div>
+        
         </div>
     </div>
 
