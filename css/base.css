@@ -5,8 +5,18 @@
     box-sizing: border-box;
 }
 
+.monomakh-regular {
+  font-family: "Monomakh", system-ui;
+  font-weight: 400;
+  font-style: normal;
+}
+
+
+
 body {
-    font-family: "Georgia", "Times New Roman", Times, serif;
+    font-family: "Monomakh", system-ui, sans-serif; /* Используйте "Monomakh" напрямую */
+    font-weight: 400; 
+    font-style: normal;
     overflow-x: hidden;
     overflow-y: hidden;
     padding-bottom: var(--nav-height);
@@ -45,6 +55,16 @@ body {
     }
 }
 
+.main-container{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-start;
+  gap: var(--spacing-lg);
+  padding: var(--spacing-lg);
+  min-height: calc(100vh - var(--nav-height) - 40px);
+}
+
 /* ==================== TYPOGRAPHY ==================== */
 .page-title {
     font-size: var(--font-size-xl);
@@ -64,3 +84,24 @@ body {
 .mb-sm { margin-bottom: var(--spacing-sm); }
 .mb-md { margin-bottom: var(--spacing-md); }
 .mb-lg { margin-bottom: var(--spacing-lg); }
+
+/* ==================== toasts ==================== */
+#toast {
+    position: fixed;
+    bottom: 100px; 
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, bottom 0.3s;
+}
+#toast.show {
+    opacity: 1;
+    visibility: visible;
+    bottom: 120px; 
+}

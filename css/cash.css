@@ -1,31 +1,21 @@
 /* ==================== CASH PAGE & GLOBAL STYLING ==================== */
-/* Fonts: Theano Didot for headings, Georgia for fallback */
-@font-face{
-  font-family: "Theano Didot";
-  src: url("/fonts/TheanoDidot-Regular.woff2") format("woff2"),
-       url("/fonts/TheanoDidot-Regular.woff") format("woff");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face{
-  font-family: "Theano Didot";
-  src: url("/fonts/TheanoDidot-Bold.woff2") format("woff2"),
-       url("/fonts/TheanoDidot-Bold.woff") format("woff");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
+/* Fonts: Define the local Inter variable font */
+
+
 
 /* ==================== GLOBAL BODY / PAGE ==================== */
 body, .page {
-    font-family: "Georgia", "Times New Roman", Times, serif;
+    /* USE THE NEW FONT: 'Inter' is now the primary font. 'sans-serif' is a safe fallback. */
+    font-family: "Inter", sans-serif;
+    
     background: linear-gradient(180deg, var(--bg-1), var(--bg-2));
     color: var(--text-primary);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    letter-spacing: 0.6px;
-    line-height: 1.3;
+    
+    /* OPTIMIZED FOR INTER: Better line height for readability and less letter-spacing. */
+    letter-spacing: 0.2px;
+    line-height: 1.5;
 }
 
 /* ==================== CASH / STATS CONTAINERS ==================== */
@@ -39,16 +29,16 @@ body, .page {
   min-height: calc(100vh - var(--nav-height) - 40px);
 }
 
-.balance-section{
+.balance-section {
   width: 100%;
   max-width: 620px;
-  background: linear-gradient(180deg, rgba(255,255,255,0.018), rgba(255,255,255,0.008));
+  /* Убран background: linear-gradient(...) */
   border-radius: var(--radius-xl);
   padding: calc(var(--spacing-lg) + 6px);
   border: var(--glass-border);
-  box-shadow: var(--shadow-lg);
+  /* Убран box-shadow: var(--shadow-lg); */
   text-align: center;
-  backdrop-filter: blur(6px);
+  /* Убран backdrop-filter: blur(6px); */
 }
 
 .balance-label{
@@ -159,8 +149,6 @@ body, .page {
     text-align: center;
 }
 
-.stat-button:hover{ transform: translateY(-6px); box-shadow: 0 20px 48px rgba(2,6,23,0.55); }
-
 .stat-value{
   font-size:20px;
   font-weight:700;
@@ -180,7 +168,10 @@ body, .page {
 .stat-button {
     width: 100%;
     flex: 1 1 auto; /* чтобы подгонять высоту */
+    display: flex;  
     text-align: center;
+    justify-content: center; 
+    align-items: center; 
     padding: 12px;
     border-radius: 10px;
     background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
@@ -189,7 +180,8 @@ body, .page {
     cursor: pointer;
     transition: transform var(--transition-fast), opacity var(--transition-fast);
 }
-.stat-button:active{ transform: scale(0.995); opacity:0.95; }
+
+.stat-button:active{ transform: scale(0.8); opacity:0.95; }
 
 /* Withdraw special */
 .stat-button.withdraw{
@@ -203,8 +195,8 @@ body, .page {
 
 .video-progress-bar { background: var(--accent-color); }
 .reward-popup { background: var(--secondary-color);
-                color: var(--text-primary);
-                display: none; }
+                  color: var(--text-primary);
+                  display: none; }
 .reward-text, .reward-amount { color: var(--primary-color); }
 .video-overlay {
     position: fixed;

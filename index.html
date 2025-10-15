@@ -4,7 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mini App</title>
-    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Monomakh&display=swap" rel="stylesheet">
     <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     
@@ -14,23 +16,91 @@
     <link rel="stylesheet" href="css/components.css">
     <link rel="stylesheet" href="css/cash.css">
     <link rel="stylesheet" href="css/navigation.css">
+    <link rel="stylesheet" href="css/quests.css">
+    <link rel="stylesheet" href="css/faq.css">
+    
 </head>
 <body>
     <!-- ==================== QUESTS PAGE ==================== -->
     <div id="quests" class="page">
-        <h1 class="page-title" data-i18n="quests.title">🎯 Квесты</h1>
-        <p class="page-description" data-i18n="quests.description">Выполняй задания и получай награды</p>
-        <div class="card">
-            <h3 class="card-title" data-i18n="quests.quest1.title">Квест 1</h3>
-            <p class="card-text" data-i18n="quests.quest1.text">Описание первого квеста</p>
-        </div>
-        <div class="card">
-            <h3 class="card-title" data-i18n="quests.quest2.title">Квест 2</h3>
-            <p class="card-text" data-i18n="quests.quest2.text">Описание второго квеста</p>
-        </div>
-        <div class="card">
-            <h3 class="card-title" data-i18n="quests.quest3.title">Квест 3</h3>
-            <p class="card-text" data-i18n="quests.quest3.text">Описание третьего квеста</p>
+        <div class="cash-container">
+            <h1 class="page-title text-center" data-i18n="quests.title">🎯 Задания</h1>
+
+            <div class="referral-card">
+                <div class="referral-text-block">
+                    <p class="referral-subtitle">Увеличь лимит просмотров</p>
+                    <h3 class="referral-title">Пригласи друга!</h3>
+                </div>
+
+                <div class="referral-progress-wrapper">
+                    <div class="progress-bar-container">
+                        <div id="referral-progress" class="progress-bar" style="width: 10%;"></div>
+                    </div>
+                    <span class="progress-counter">1/10</span>
+                </div>
+
+                <div class="referral-actions">
+                    <button class="action-btn secondary-btn" id="copy-link-btn">
+                        Скопировать ссылку
+                    </button>
+                    <button class="action-btn primary-btn" id="invite-btn">
+                        Пригласить
+                    </button>
+                </div>
+            </div>
+
+            <div class="quests-list-header">
+                 <h2 class="section-title">Список заданий</h2>
+            </div>
+
+            <div class="quests-list scrollable-area" id="quests-list">
+                <div class="quest-item" data-quest-id="quest1">
+                    <div class="quest-details">
+                        <h3 class="quest-title" data-i18n="quests.quest1.title">Подпишись на канал</h3>
+                        <p class="quest-reward" data-i18n="quests.quest1.reward">+0.50$</p>
+                    </div>
+                    <button class="check-btn primary-btn">
+                        Проверить
+                    </button>
+                </div>
+
+                <div class="quest-item completed" data-quest-id="quest2">
+                    <div class="quest-details">
+                        <h3 class="quest-title completed-title" data-i18n="quests.quest2.title">Посмотреть 5 видео</h3>
+                        <p class="quest-reward" data-i18n="quests.quest2.reward">+0.20$</p>
+                    </div>
+                    <span class="check-btn completed-icon">✔</span>
+                </div>
+
+                <div class="quest-item" data-quest-id="quest3">
+                    <div class="quest-details">
+                        <h3 class="quest-title" data-i18n="quests.quest3.title">Сделать репост</h3>
+                        <p class="quest-reward" data-i18n="quests.quest3.reward">+0.40$</p>
+                    </div>
+                    <button class="check-btn primary-btn">
+                        Проверить
+                    </button>
+                </div>
+                <div class="quest-item" data-quest-id="quest4">
+                    <div class="quest-details">
+                        <h3 class="quest-title" data-i18n="quests.quest3.title">Сделать репост</h3>
+                        <p class="quest-reward" data-i18n="quests.quest3.reward">+0.40$</p>
+                    </div>
+                    <button class="check-btn primary-btn">
+                        Проверить
+                    </button>
+                </div>
+                <div class="quest-item" data-quest-id="quest67">
+                    <div class="quest-details">
+                        <h3 class="quest-title" data-i18n="quests.quest3.title">Сделать репост</h3>
+                        <p class="quest-reward" data-i18n="quests.quest3.reward">+0.40$</p>
+                    </div>
+                    <button class="check-btn primary-btn">
+                        Проверить
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -50,26 +120,26 @@
             <button class="earn-button" id="earn-btn">
                 <div class="earn-button-text">
                     <div class="earn-cta" data-i18n="cash.earn">Заработать</div>
-                    <div class="earn-amount">+$0.05</div>
+                    <div class="earn-amount">$0.05</div>
                 </div>
             </button>
             <!-- Stats -->
             <div class="stats-section">
                 <div class="stat-item">
                     <div class="stat-card">
-                        <div class="stat-value" id="today-count">12</div>
-                        <div class="stat-label" data-i18n="cash.today">Сегодня</div>
+                        <div class="stat-value" id="today-count">1/10</div>
+                        <div class="stat-label" data-i18n="cash.today">Сегодня просмотрено</div>
                     </div>
-                    <div class="stat-button">
+                    <div class="stat-button" id="add-limit-btn">
                        <span>Увеличить Лимит</span>
                     </div>
                 </div>
                 <div class="stat-item">
                     <div class="stat-card">
                         <div class="stat-value" id="total-earned">$145.20</div>
-                        <div class="stat-label" data-i18n="cash.total">Всего заработано</div>
+                        <div class="stat-label" data-i18n="cash.total">Баланс</div>
                     </div>
-                    <div class="stat-button">
+                    <div class="stat-button" id="cash-out-btn">
                        <span>ВЫВЕСТИ</span>
                     </div>
                 </div>
@@ -80,21 +150,17 @@
 
     <!-- ==================== FAQ PAGE ==================== -->
     <div id="faq" class="page">
+    <div class="main-container">
         <h1 class="page-title" data-i18n="faq.title">❓ FAQ</h1>
         <p class="page-description" data-i18n="faq.description">Часто задаваемые вопросы</p>
-        <div class="card">
-            <h3 class="card-title" data-i18n="faq.question1.title">Как это работает?</h3>
-            <p class="card-text" data-i18n="faq.question1.text">Здесь будет ответ на вопрос</p>
-        </div>
-        <div class="card">
-            <h3 class="card-title" data-i18n="faq.question2.title">Как получить награду?</h3>
-            <p class="card-text" data-i18n="faq.question2.text">Здесь будет ответ на вопрос</p>
-        </div>
-        <div class="card">
-            <h3 class="card-title" data-i18n="faq.question3.title">Техническая поддержка</h3>
-            <p class="card-text" data-i18n="faq.question3.text">Здесь будет контактная информация</p>
-        </div>
+        
+        <div class="faq-list scrollable-area" id="faq-list"> </div>
+        <button class="help-chat-btn primary-btn">
+            Чат поддержки
+        </button>
+         
     </div>
+</div>
 
     <!-- ==================== VIDEO OVERLAY ==================== -->
     <div class="video-overlay" id="video-overlay">

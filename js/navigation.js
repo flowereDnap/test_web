@@ -22,7 +22,7 @@ class Navigation {
         });
     }
 
-    navigateTo(pageId) {
+    navigateTo(pageId, args) {
         const navButtons = document.querySelectorAll('.nav-btn');
         const pages = document.querySelectorAll('.page');
         
