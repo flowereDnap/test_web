@@ -90,7 +90,19 @@ class VideoPlayer {
     }
 
     onVideoEnd() {
-        this.close();
-        this.app.onVideoComplete(this.currentVideo);
-    }
+    this.close();
+
+    // Сообщаем бэкенду о просмотре
+    fetch(`${CONFIG.backendUrl}/video-watched`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            video_id: this.video.dataset.videoId,
+            telegram_id: this.app.tg.initDataUnsafe.user.id
+        })
+    }).catch(err => console.error('Failed to notify backend:', err));
+
+    this.app.onVideoComplete();
+}
+
 }
