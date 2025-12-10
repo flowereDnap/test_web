@@ -1,0 +1,216 @@
+/* ==================== CASH / STATS CONTAINERS ==================== */
+
+/*
+* Стилизация .cash-container (display/flex/padding/gap) перенесена в base.css
+* для унификации с .main-container и .quests-container.
+*/
+
+.cash-container {
+    /* Оставляем только специфические стили, если они нужны,
+    * но в данном случае контейнер использует общие стили из base.css
+    * и просто выступает оберткой.
+    */
+    align-items: center; /* Центрируем содержимое по горизонтали */
+    justify-content: center; /* Центрируем содержимое по вертикали, если места достаточно */
+}
+
+/* ==================== BALANCE SECTION ==================== */
+.balance-section {
+    width: 100%;
+    max-width: 620px;
+    
+    /* Используем переменные, которые определили в variables.css */
+    background: var(--bg-container); 
+    border-radius: var(--radius-xl);
+    padding: var(--spacing-xl); /* Увеличенный padding для премиум-вида */
+    border: 1px solid var(--border-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); 
+    text-align: center;
+}
+
+.balance-label{
+    display:block;
+    font-size: var(--font-size-base); /* Чуть больше */
+    color: var(--text-secondary);
+    letter-spacing: 1.4px; /* Уменьшаем letter-spacing для Inter */
+    margin-bottom: var(--spacing-sm);
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+}
+
+.balance-amount{
+    display:flex;
+    align-items:baseline;
+    justify-content:center;
+    gap: 8px; /* Уменьшаем gap */
+    font-weight: var(--font-weight-bold);
+}
+
+#balance-value{
+    font-size: var(--font-size-3xl); 
+    color: var(--primary-color);
+    /* Убираем -webkit-text-stroke и используем text-shadow для эффекта */
+    text-shadow: 0 0 10px rgba(212, 175, 55, 0.5), 0 5px 20px rgba(0, 0, 0, 0.3);
+    font-variant-numeric: tabular-nums;
+    font-weight: 800; /* Очень жирный */
+}
+
+.balance-currency{
+    font-size: var(--font-size-md);
+    color:var(--text-secondary);
+    transform: translateY(-8px); /* Смещаем вниз */
+    font-weight: var(--font-weight-bold);
+}
+
+/* ==================== EARN BUTTON ==================== */
+.earn-button{
+    /* Это уникальная большая кнопка, оставляем ее стили */
+    width:100%;
+    max-width:520px;
+    padding:18px 24px; /* Увеличиваем padding */
+    border-radius: var(--radius-lg); 
+    border: 1px solid rgba(255,255,255,0.06);
+    background: linear-gradient(90deg, rgba(212,175,55,0.08), rgba(0,212,255,0.06));
+    box-shadow: 0 22px 60px rgba(3,12,30,0.6);
+    cursor:pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+    outline: none; /* Убираем фокус браузера */
+}
+
+.earn-button:hover{
+    transform: translateY(-4px); /* Уменьшаем подъем для мобильного приложения */
+    box-shadow: 0 28px 70px rgba(3,12,30,0.72);
+}
+
+.earn-button:active{
+    transform: translateY(0) scale(0.995); /* Убираем негативный Y при нажатии */
+}
+
+/* Inner CTA */
+.earn-button-text{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap: 4px; /* Уменьшаем gap */
+}
+.earn-cta{
+    font-size: var(--font-size-sm);
+    color:var(--text-secondary);
+    text-transform:uppercase;
+    letter-spacing:2px;
+    font-weight: 800;
+}
+.earn-amount{
+    font-size: var(--font-size-xl);
+    font-weight: 900; /* Очень жирный акцент */
+    /* Используем градиент для текста */
+    background: linear-gradient(90deg,var(--accent-color), #3bf0c8);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 4px 10px rgba(0,212,255,0.1);
+}
+
+/* ==================== STATS GRID ==================== */
+.stats-section {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-md);
+    width: 100%;
+    max-width: 620px;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-items: stretch;
+}
+
+.stat-card {
+    /* Используем общие стили карточек, но без фона */
+    padding: var(--spacing-md);
+    border-radius: var(--radius-md);
+    background: transparent; 
+    border: none;
+    text-align: center;
+}
+
+.stat-value{
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+    letter-spacing: 0.4px;
+}
+#total-earned{ 
+    color: var(--primary-color); 
+    font-weight: 800; 
+}
+
+.stat-label{
+    font-size: var(--font-size-xs);
+    color:var(--text-secondary);
+    letter-spacing:1.6px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* Стили для кнопок в секции статистики */
+.stat-action-btn { 
+    /* Используем класс, который мы добавили в HTML и стилизовали в components.css */
+    /* Переопределяем уникальные стили для этой секции */
+    height: 40px; /* Немного ниже, чем стандартная кнопка */
+    padding: 0 var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    
+    /* Базовый стиль, похожий на secondary/btn */
+    background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border: 1px solid rgba(255,255,255,0.04);
+    
+    flex: 1 1 auto; /* Растягивает кнопку */
+}
+
+.stat-action-btn:active{ transform: scale(0.98); opacity:0.9; }
+
+
+/* Withdraw special (#cash-out-btn) */
+#cash-out-btn{
+    /* Используем стили первичной кнопки, но с градиентом */
+    background: linear-gradient(90deg, var(--primary-color), #f0c85c);
+    color: var(--bg-page); /* Темный текст на золотом фоне */
+    border: none;
+    box-shadow: 0 8px 20px rgba(212, 175, 55, 0.3);
+}
+
+/* ==================== VIDEO / REWARD ==================== */
+/*
+* Стили для .video-overlay, .video-close, .video-container, .video-player,
+* .video-progress-bar, .reward-popup и т.д.
+* были удалены, так как они должны находиться в components.css
+*/
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 780px){
+    .stats-section{ max-width: 420px; }
+    #balance-value{ font-size:38px; }
+    .earn-button{ max-width:420px; padding:16px; border-radius: var(--radius-md); }
+    .cash-container{ gap: var(--spacing-md); }
+    .stat-value{ font-size: var(--font-size-md); }
+    .balance-section{ padding: var(--spacing-lg); }
+}
+
+@media (max-width: 360px){
+    #balance-value{ font-size:32px; }
+    .earn-amount{ font-size: var(--font-size-lg); }
+    .earn-cta{ font-size: var(--font-size-xs); }
+    .stat-label{ font-size: 9px; }
+}

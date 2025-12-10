@@ -1,0 +1,211 @@
+/* ==================== CARD COMPONENTS ==================== */
+.card {
+    /* ИЗМЕНЕНО: Используем семантически точную переменную для фона контейнера */
+    background: var(--bg-container); 
+    padding: var(--spacing-lg);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color); /* Добавим легкую обводку для отделения */
+    margin-bottom: var(--spacing-md);
+    transition: transform var(--transition-fast);
+    /* Добавим легкую тень для глубины (опционально) */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
+}
+
+.card:active {
+    transform: scale(0.98);
+}
+
+.card-title {
+    /* ИСПОЛЬЗУЕМ: font-weight-bold (700) вместо 600 для консистентности */
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold); 
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+}
+
+.card-text {
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* ==================== BUTTONS & ACTIONS ==================== */
+
+/* Универсальный стиль для всех кнопок */
+.btn, .primary-btn, .secondary-btn, .stat-action-btn { 
+    /* ВАЖНО: Применяем универсальные стили к кнопкам, которые мы заменили в HTML */
+    height: var(--btn-height);
+    padding: 0 var(--spacing-lg);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+    cursor: pointer;
+    text-align: center;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    outline: none;
+    /* Сброс стандартных стилей браузера */
+    -webkit-tap-highlight-color: transparent; 
+}
+
+/* Стиль для первичных (акцентных) кнопок */
+.btn.primary, .primary-btn {
+    background: var(--primary-color);
+    color: var(--bg-page); /* Текст должен быть темным на золотом фоне */
+    border: none;
+    box-shadow: 0 4px 10px rgba(212, 175, 55, 0.4);
+}
+.btn.primary:active, .primary-btn:active {
+    background: darken(var(--primary-color), 10%);
+    transform: scale(0.98);
+}
+
+/* Стиль для вторичных (дополнительных/прозрачных) кнопок */
+.btn.secondary, .secondary-btn {
+    background: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--primary-color); 
+}
+.btn.secondary:active, .secondary-btn:active {
+    background: rgba(212, 175, 55, 0.1);
+    transform: scale(0.98);
+}
+
+
+/* ==================== INPUTS & FORMS ==================== */
+
+.app-input {
+    width: 100%;
+    height: var(--input-height);
+    padding: 0 var(--spacing-md);
+    background: var(--bg-container);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+    outline: none;
+    transition: border-color var(--transition-fast);
+}
+
+.app-input:focus {
+    border-color: var(--accent-color);
+}
+
+.input-label {
+    display: block;
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-sm);
+}
+
+/* ==================== PROGRESS BAR ==================== */
+
+.progress-bar-container {
+    height: 8px;
+    background: var(--bg-container);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background: var(--accent-color);
+    transition: width var(--transition-normal);
+    border-radius: 4px;
+}
+
+/* ==================== SCROLL UTILITY ==================== */
+
+.scrollable-area {
+    overflow-y: auto;
+    width: 100%;
+    /* Настраиваем стиль скроллбара для WebKit */
+    -webkit-overflow-scrolling: touch; 
+}
+
+.scrollable-area::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.scrollable-area::-webkit-scrollbar-thumb {
+    background-color: var(--text-secondary);
+    border-radius: 2px;
+}
+
+.scrollable-area::-webkit-scrollbar-track {
+    background-color: var(--bg-container);
+}
+
+
+/* ==================== OVERLAYS & POPUPS ==================== */
+/* Video & Reward overlays inherit colors from cash.css (или используем общие переменные) */
+
+.modal-overlay,
+.video-overlay { 
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--overlay-bg); /* Используем общую переменную */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-normal), visibility var(--transition-normal);
+}
+
+.modal-overlay.active,
+.video-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Стили для оверлеев/попапов, которые вы предоставили */
+.video-progress-bar { 
+    background: var(--accent-color); 
+}
+
+.reward-popup { 
+    position: fixed;
+    bottom: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    padding: var(--spacing-lg) var(--spacing-xl);
+    border-radius: var(--radius-lg);
+    background: var(--bg-container); 
+    color: var(--text-primary); 
+    text-align: center;
+    z-index: 1500;
+    opacity: 0;
+    visibility: hidden;
+    transition: all var(--transition-normal) ease-out;
+}
+
+.reward-popup.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, 0); /* Сдвиг при появлении */
+}
+
+.reward-emoji {
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--spacing-sm);
+}
+
+.reward-text { 
+    color: var(--text-primary); 
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-medium);
+}
+.reward-amount { 
+    color: var(--primary-color); /* Акцентный цвет для суммы */
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+}

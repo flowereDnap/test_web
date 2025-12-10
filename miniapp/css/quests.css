@@ -1,0 +1,183 @@
+/* ==================== QUESTS PAGE CUSTOM STYLES ==================== */
+
+/*
+* .text-center определен в base.css
+* Базовые стили .section-title определены в base.css
+*/
+
+.quests-list-header {
+    width: 100%;
+    max-width: 620px;
+    align-self: center; /* Центрируем заголовок секции */
+    padding-top: var(--spacing-sm);
+}
+
+.quests-list-header .section-title {
+    /* Переопределяем выравнивание заголовка для этой секции */
+    text-align: left;
+    margin-bottom: 0;
+}
+
+/* === СЕКЦИЯ ДЛЯ ПРИГЛАШЕНИЙ (REFERRAL CARD) === */
+.referral-card {
+    /* Более выразительный фон для акцентной карточки */
+    background: linear-gradient(135deg, var(--bg-container) 70%, rgba(212, 175, 55, 0.05));
+    border: 1px solid rgba(212, 175, 55, 0.2); /* Легкая золотая обводка */
+    padding: var(--spacing-md);
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 620px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    align-self: center; /* Центрируем карточку */
+}
+
+.referral-text-block {
+    text-align: left;
+}
+.referral-subtitle {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
+}
+.referral-title {
+    /* Используем Monomakh для акцента */
+    font-family: var(--font-accent); 
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--primary-color);
+    margin-top: 4px;
+}
+
+/* Прогресс-бар */
+.referral-progress-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    width: 100%;
+    margin-top: var(--spacing-xs);
+}
+/* Переопределяем высоту прогресс-бара для этой секции */
+.referral-progress-wrapper .progress-bar-container { 
+    height: 6px; 
+    background: var(--bg-2);
+}
+.referral-progress-wrapper .progress-bar {
+    background: var(--primary-color); /* Золотой прогресс */
+}
+.progress-counter {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    font-weight: var(--font-weight-medium);
+    min-width: 30px;
+}
+
+/* Кнопки */
+.referral-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-xs);
+}
+/*
+* Удаляем стили .action-btn, .primary-btn, .secondary-btn,
+* так как они унифицированы в components.css как .btn, .btn.primary, .btn.secondary
+*/
+.referral-actions .btn {
+    flex: 1; /* Растягиваем обе кнопки */
+    height: 38px; 
+    font-size: var(--font-size-sm);
+}
+
+/* === СЕКЦИЯ ОСНОВНЫХ КВЕСТОВ (LIST) === */
+
+.quests-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    width: 100%;
+    max-width: 620px;
+    align-self: center;
+    
+    /* Используем .scrollable-area из components.css */
+    /* Устанавливаем высоту, чтобы сработал скролл */
+    max-height: calc(100vh - 400px); /* Примерная расчетная высота */
+    overflow-y: auto;
+    
+    padding-right: var(--spacing-xs); /* Небольшой отступ для скроллбара */
+}
+
+/* Стилизация скроллбара наследуется от .scrollable-area в components.css */
+
+
+.quest-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-md);
+    background: var(--bg-container); /* Семантический фон */
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    transition: background var(--transition-fast), transform var(--transition-fast);
+}
+.quest-item:active {
+    transform: scale(0.99);
+}
+.quest-item.completed {
+    opacity: 0.5;
+    pointer-events: none; /* Невозможно нажать */
+}
+
+.quest-details {
+    flex-grow: 1;
+    text-align: left;
+    padding-right: var(--spacing-sm);
+}
+.quest-title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium);
+    color: var(--text-primary);
+}
+.quest-title.completed-title {
+    text-decoration: line-through;
+    color: var(--text-secondary);
+}
+.quest-reward {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: var(--accent-color); /* Используем циан для награды */
+    margin-top: 2px;
+}
+
+/* Кнопка "Проверить" / Статус */
+.check-btn {
+    /* Наследуем базовые стили от .btn, но используем как div/span */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 14px;
+    margin-left: var(--spacing-md);
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-bold);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform var(--transition-fast);
+    
+    /* Стили по умолчанию (Проверить) */
+    background: var(--primary-color);
+    color: var(--bg-page);
+}
+.check-btn:active {
+    transform: scale(0.95);
+}
+
+.check-btn.completed-icon {
+    /* Стили для иконки "Готово" */
+    background: var(--color-success); /* Зеленый цвет из переменных */
+    color: var(--bg-page);
+    font-size: var(--font-size-md);
+    line-height: 1;
+    padding: 8px 10px;
+    pointer-events: none; 
+}

@@ -1,0 +1,109 @@
+/* ==================== FAQ SECTION STYLES ==================== */
+
+.faq-list {
+    width: 100%;
+    max-width: 620px;
+    align-self: center; /* Центрируем список */
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm); 
+    margin-bottom: var(--spacing-lg);
+
+    /* Используем общие свойства скролла, определенные в base.css и components.css */
+    max-height: 50vh; 
+    overflow-y: auto; 
+    padding-right: var(--spacing-xs); /* Отступ для скроллбара */
+    
+    /* Стилизация скроллбара будет наследована от .scrollable-area */
+    /* ВАЖНО: убедиться, что .faq-list в HTML также имеет класс .scrollable-area,
+    * либо мы должны убедиться, что базовый .faq-list наследует эти стили.
+    * Для безопасности, можно добавить .scrollable-area в HTML. 
+    */
+}
+/* Стили скроллбара удалены, так как они унифицированы в components.css */
+
+
+.faq-item {
+    background: var(--bg-container); /* ИСПОЛЬЗОВАНО: bg-container */
+    flex-shrink: 0; 
+    border-radius: var(--radius-md);
+    overflow: hidden; 
+    border: 1px solid var(--border-color); /* Добавим легкую обводку */
+}
+
+/* Кнопка Вопроса */
+.faq-toggle {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-md);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    color: var(--text-primary);
+    transition: background var(--transition-fast);
+}
+
+.faq-toggle:hover {
+    /* ИСПОЛЬЗОВАНО: более совместимый rgba-цвет */
+    background: rgba(255, 255, 255, 0.04); 
+}
+.faq-toggle:active {
+    transform: scale(0.99);
+}
+
+
+.faq-title {
+    font-size: var(--font-size-base);
+    font-weight: var(--font-weight-medium); /* ИСПОЛЬЗОВАНО: font-weight-medium */
+    flex-grow: 1;
+}
+
+/* Стрелка */
+.faq-arrow {
+    font-size: var(--font-size-md); /* Чуть больше */
+    margin-right: var(--spacing-xs);
+    color: var(--primary-color);
+    transition: transform var(--transition-fast);
+    /* Добавляем минимальную ширину, чтобы не "прыгал" текст */
+    min-width: 1em; 
+}
+
+/* Состояние Раскрытия */
+.faq-item.active .faq-arrow {
+    transform: rotate(90deg); 
+}
+
+/* Обертка для Содержимого (ключ к анимации) */
+.faq-content-wrapper {
+    max-height: 0; 
+    transition: max-height 0.3s ease-in-out; 
+    overflow: hidden;
+}
+
+/* Содержимое Описания */
+.faq-description {
+    padding: 0 var(--spacing-md) var(--spacing-md) var(--spacing-md);
+    font-size: var(--font-size-base);
+    color: var(--text-secondary);
+    line-height: 1.6; /* Улучшенная читаемость */
+}
+
+/* Кнопка Помощи внизу */
+.help-chat-btn {
+    /* УНИФИКАЦИЯ: Используем общие классы кнопок из components.css */
+    /*
+    * В HTML было: <button class="help-chat-btn primary-btn">
+    * Здесь нам нужно только позиционирование и размеры, базовые стили
+    * (background, color, font-weight, active) заданы в .primary-btn
+    */
+    align-self: center; /* Центрируем кнопку */
+    width: 100%;
+    max-width: 620px;
+    height: var(--btn-height); /* ИСПОЛЬЗОВАНО: btn-height */
+    padding: 0 var(--spacing-lg); /* Убираем специфичный padding */
+    border-radius: var(--radius-md);
+
+    /* Удалены дублирующиеся стили: background, color, font-weight, active, border */
+}

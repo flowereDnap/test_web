@@ -1,0 +1,150 @@
+/* ==================== BASE STYLES ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* УБРАНО: .monomakh-regular, так как будем использовать его через переменную в заголовках */
+
+
+body {
+    /* ИЗМЕНЕНО: Используем Inter для основного текста, Monomakh для акцентов */
+    font-family: var(--font-inter);
+    font-weight: var(--font-weight-regular); 
+    font-style: normal;
+    
+    /* Скролл нужен, но только для основного контента. Скрываем только горизонтальный. */
+    overflow-x: hidden; 
+    overflow-y: visible;
+
+    padding-bottom: calc(
+        (2 * var(--spacing-sm)) + /* Верхний и нижний паддинг nav-бара (6px + 6px = 12px) */
+        40px + /* Примерная высота содержимого nav-бара */ 
+        max(0px, env(safe-area-inset-bottom)) 
+    );
+    
+    /* Стили фона */
+    background: var(--bg-page); /* Используем переменную для чистого фона */
+    color: var(--text-primary);
+    
+    /* Отступ снизу для навигации */
+    padding-bottom: var(--nav-height);
+    
+    /* Улучшение рендеринга текста */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==================== PAGE LAYOUT ==================== */
+.page {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* ИЗМЕНЕНО: Высота 100% от body (которое включает padding-bottom) */
+    height: 100%; 
+    
+    /* ВАЖНО: Убираем overflow: hidden, чтобы скролл работал */
+    overflow-x: hidden; 
+    overflow-y: visible;
+    
+    display: none;
+    animation: fadeIn var(--transition-normal);
+}
+
+.page.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from { 
+        opacity: 0; 
+        transform: translateY(10px); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0); 
+    }
+}
+
+/* Общий контейнер для контента страниц */
+.main-container,
+.cash-container, /* Добавляем контейнеры с других страниц */
+.quests-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    
+    /* Отступы по периметру */
+    padding: var(--spacing-lg); 
+    
+    /* Используем Flex Grow, чтобы контейнер занимал все доступное пространство и мог скроллиться */
+    height: 100%; 
+    overflow-y: auto; /* Позволяем контенту внутри контейнера скроллиться */
+    
+    /* Gap между основными блоками на странице */
+    gap: var(--spacing-lg); 
+    
+    /* ВАЖНО: min-height не нужен, если используется flex/overflow-y: auto */
+}
+
+
+/* ==================== TYPOGRAPHY ==================== */
+.page-title {
+    /* ИЗМЕНЕНО: Используем акцентный шрифт и жирность */
+    font-family: var(--font-accent); 
+    font-size: var(--font-size-2xl); /* Сделаем чуть крупнее для акцента */
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    
+    /* Убираем margin-bottom, чтобы управлять им через gap в контейнере или утилиты */
+    margin: 0; 
+}
+
+.page-title.text-center {
+    align-self: center; /* Центрирование заголовка внутри flex-контейнера */
+}
+
+.section-title {
+    font-family: var(--font-inter);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--text-primary);
+    margin-top: var(--spacing-lg); /* Небольшой отступ сверху для секций */
+}
+
+.page-description {
+    font-size: var(--font-size-md);
+    line-height: 1.5;
+    color: var(--text-secondary);
+    margin: 0; /* Управление отступами через gap или утилиты */
+}
+
+
+/* ==================== UTILITY CLASSES ==================== */
+.text-center { text-align: center; } /* Оставлено для использования внутри блоков */
+.mb-sm { margin-bottom: var(--spacing-sm); }
+.mb-md { margin-bottom: var(--spacing-md); }
+.mb-lg { margin-bottom: var(--spacing-lg); }
+
+/* ==================== TOASTS ==================== */
+#toast {
+    position: fixed;
+    bottom: calc(var(--nav-height) + var(--spacing-lg)); /* Привязка к высоте навигации */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--overlay-bg); /* Используем переменную для фона оверлея */
+    color: var(--text-primary);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-sm);
+    z-index: 2000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-fast), bottom var(--transition-fast);
+}
+#toast.show {
+    opacity: 1;
+    visibility: visible;
+    bottom: calc(var(--nav-height) + var(--spacing-xl)); /* Небольшой сдвиг вверх при появлении */
+}

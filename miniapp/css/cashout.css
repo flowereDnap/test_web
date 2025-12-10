@@ -1,0 +1,176 @@
+/* ==================== CASH OUT POPUP (Modal) ==================== */
+
+/*
+* Базовые стили .modal-overlay и .modal-overlay.active должны быть в components.css.
+* Здесь мы оставляем только специфические переопределения.
+*/
+
+.modal-overlay {
+    /* Обеспечиваем, что он выше, чем другие оверлеи */
+    z-index: 2000; 
+}
+
+.modal-content {
+    background: var(--bg-1); /* ИСПОЛЬЗОВАНО: bg-1 для контраста */
+    padding: var(--spacing-xl); /* Чуть больше padding */
+    border-radius: var(--radius-xl);
+    width: 90%;
+    max-width: 400px;
+    
+    /* Анимация (оставляем, так как это важно для UX) */
+    transform: translateY(20px);
+    opacity: 0;
+    transition: transform var(--transition-normal), opacity var(--transition-normal);
+}
+
+.modal-overlay.active .modal-content {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.modal-title {
+    font-family: var(--font-accent); /* Акцентный шрифт для заголовка */
+    font-size: var(--font-size-xl); /* Чуть крупнее */
+    font-weight: var(--font-weight-bold);
+    margin-bottom: var(--spacing-xl);
+    text-align: center;
+    color: var(--text-primary);
+}
+
+/* --- Универсальные кнопки в модальном окне (для Back/Close) --- */
+.modal-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    border-radius: var(--radius-sm); 
+    transition: background var(--transition-fast);
+    z-index: 10;
+    outline: none;
+}
+
+.modal-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.08); 
+}
+
+/* Кнопка "Назад" */
+.cashout-back-btn {
+    composes: modal-icon-btn; /* Наследует общие стили */
+    top: var(--spacing-md); 
+    left: var(--spacing-md);
+    color: var(--text-primary);
+    font-size: var(--font-size-lg);
+}
+
+/* Кнопка "Закрыть" */
+.modal-close-btn,
+.cashout-close {
+    composes: modal-icon-btn; /* Наследует общие стили */
+    top: var(--spacing-md);
+    right: var(--spacing-md);
+    color: var(--text-secondary); /* Менее заметный крестик */
+    font-size: var(--font-size-lg);
+}
+
+/* --- Cashout Steps --- */
+.cashout-step {
+    display: none;
+    animation: fadeIn var(--transition-normal);
+}
+
+.cashout-step.active {
+    display: block;
+}
+
+/* --- Step 1: Options List --- */
+.cashout-options-list {
+    max-height: 300px; 
+    /* Добавляем класс скролла, чтобы применить стили из components.css */
+    overflow-y: auto; 
+    padding-right: var(--spacing-xs); 
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+/* УБРАНО: Стили для скрытия скроллбара (несовместимо / неэстетично) */
+
+.cashout-option-btn {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: var(--spacing-md);
+    text-align: left;
+    /* УНИФИКАЦИЯ: Используем bg-container */
+    background: var(--bg-container); 
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+    color: var(--text-primary);
+    font-size: var(--font-size-md);
+}
+
+.cashout-option-btn:hover {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--primary-color);
+}
+.cashout-option-btn:active {
+    transform: scale(0.99);
+}
+
+.option-icon {
+    font-size: var(--font-size-xl);
+    margin-right: var(--spacing-md);
+    color: var(--primary-color); /* Золотая иконка */
+}
+
+.option-name {
+    flex-grow: 1;
+    font-weight: var(--font-weight-medium);
+}
+
+/* --- Step 2: Input and Caption --- */
+.cashout-input-group {
+    margin-bottom: var(--spacing-lg);
+}
+
+/* .input-label берется из components.css */
+
+.app-input {
+    /* Базовые стили берутся из components.css */
+    margin-bottom: var(--spacing-md);
+    
+    /* Специфические стили для модального окна, переопределяющие компоненты */
+    background-color: var(--bg-container); 
+}
+
+.caption-list {
+    padding: var(--spacing-sm);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--border-color); /* Даш-обводка для информации */
+    margin-top: var(--spacing-md);
+}
+
+.caption-item {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 4px;
+}
+
+/* Кнопка действия (primary) */
+.cashout-action-btn {
+    /* Должна быть кнопкой с классами .btn.primary в HTML */
+    width: 100%;
+    height: var(--btn-height); 
+    font-size: var(--font-size-md);
+    font-weight: var(--font-weight-bold);
+    margin-top: var(--spacing-lg);
+}

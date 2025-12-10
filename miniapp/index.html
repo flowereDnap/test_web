@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini App</title>
+
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Monomakh&display=swap" rel="stylesheet">
+
+        <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+        <link rel="stylesheet" href="/assets/css/variables.css">
+    <link rel="stylesheet" href="/assets/css/base.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/cash.css">
+    <link rel="stylesheet" href="/assets/css/navigation.css">
+    <link rel="stylesheet" href="/assets/css/quests.css">
+    <link rel="stylesheet" href="/assets/css/faq.css">
+    <link rel="stylesheet" href="/assets/css/cashout.css">
+</head>
+<body>
+        <div id="quests" class="page">
+        <div class="quests-container">             <h1 class="page-title text-center" data-i18n="quests.title">🎯 Задания</h1>
+            <div class="referral-card">
+                <div class="referral-text-block">
+                    <p class="referral-subtitle">Увеличь лимит просмотров</p>
+                    <h3 class="referral-title">Пригласи друга!</h3>
+                </div>
+                <div class="referral-progress-wrapper">
+                    <div class="progress-bar-container">
+                        <div id="referral-progress" class="progress-bar" style="width: 10%;"></div>
+                    </div>
+                    <span class="progress-counter">1/10</span>
+                </div>
+                <div class="referral-actions">
+                    <button class="btn secondary" id="copy-link-btn">Скопировать ссылку</button>                     <button class="btn primary" id="invite-btn">Пригласить</button>                 </div>
+            </div>
+
+            <div class="quests-list-header">
+                 <h2 class="section-title">Список заданий</h2>
+            </div>
+
+            <div class="quests-list scrollable-area" id="quests-list">
+            </div>
+        </div>
+    </div>
+
+        <div id="cash" class="page active">
+        <div class="cash-container">
+            <div class="balance-section">
+                <div class="balance-label" data-i18n="cash.balance">Сегодня заработано</div>
+                <div class="balance-amount">
+                    <span id="balance-value">12.45</span>
+                    <span class="balance-currency">$</span>
+                </div>
+            </div>
+
+            <button class="earn-button" id="earn-btn">
+                <div class="earn-button-text">
+                    <div class="earn-cta" data-i18n="cash.earn">Заработать</div>
+                    <div class="earn-amount">$0.05</div>
+                </div>
+            </button>
+
+            <div class="stats-section">
+                <div class="stat-item">
+                    <div class="stat-card">
+                        <div class="stat-value" id="today-count">1/10</div>
+                        <div class="stat-label" data-i18n="cash.today">Сегодня просмотрено</div>
+                    </div>
+                    <button class="stat-action-btn" id="add-limit-btn">Увеличить Лимит</button>                 </div>
+                <div class="stat-item">
+                    <div class="stat-card">
+                        <div class="stat-value" id="total-earned">$145.20</div>
+                        <div class="stat-label" data-i18n="cash.total">Баланс</div>
+                    </div>
+                    <button class="stat-action-btn" id="cash-out-btn">ВЫВЕСТИ</button>                 </div>
+            </div>
+        </div>
+    </div>
+
+        <div id="faq" class="page">
+        <div class="main-container">
+            <h1 class="page-title" data-i18n="faq.title">❓ FAQ</h1>
+            <p class="page-description" data-i18n="faq.description">Часто задаваемые вопросы</p>
+            <div class="faq-list scrollable-area" id="faq-list"></div>
+            <button class="help-chat-btn primary-btn">Чат поддержки</button>
+        </div>
+            </div>
+
+        <div class="video-overlay" id="video-overlay">
+        <div class="video-container">
+            <button class="video-close" id="video-close">✕</button>
+            <video class="video-player" id="video-player" playsinline>
+                <source src="./vids/sample.mp4" type="video/mp4">
+            </video>
+            <div class="video-progress">
+                <div class="video-progress-bar" id="progress-bar"></div>
+            </div>
+        </div>
+    </div>
+
+        <div class="reward-popup" id="reward-popup">
+        <div class="reward-emoji">🎉</div>
+        <div class="reward-text" data-i18n="cash.earned">Заработано!</div>
+        <div class="reward-amount">+$0.05</div>
+    </div>
+
+    <div class="modal-overlay" id="cashout-overlay">
+        <div class="modal-content cashout-modal">
+            <button class="back-btn" id="cashout-back-btn">❮</button>
+            <button class="modal-close-btn" id="cashout-close">✕</button>
+            <h2 class="modal-title">Вывод средств</h2>
+
+            <div id="cashout-step-options" class="cashout-step active">
+                <div class="cashout-options-list scrollable-area">
+                    </div>
+            </div>
+
+            <div id="cashout-step-input" class="cashout-step">
+                <div class="cashout-input-group">
+                    <label for="cashout-amount-input" class="input-label">Сумма вывода ($)</label>
+                    <input type="tel" id="cashout-amount-input" class="app-input" placeholder="Введите сумму">
+                    
+                    <div id="cashout-details-caption" class="caption-list">
+                        <p class="caption-item">Минимальная сумма: <span class="detail-min-value"></span></p>
+                        <p class="caption-item">Комиссия: <span class="detail-commission"></span></p>
+                        <p class="caption-item">Срок транзакции: <span class="detail-timeframe"></span></p>
+                    </div>
+                </div>
+                
+                <button class="primary-btn cashout-action-btn" id="confirm-cashout-btn">
+                    ВЫВЕСТИ
+                </button>
+            </div>
+        </div>
+    </div>
+        <nav class="bottom-nav">
+        <button class="nav-btn" data-page="quests">
+            <span class="nav-icon">🎯</span>
+            <span class="nav-label" data-i18n="nav.quests">Квесты</span>
+        </button>
+        <button class="nav-btn active" data-page="cash">
+            <span class="nav-icon">💰</span>
+            <span class="nav-label" data-i18n="nav.cash">Заработок</span>
+        </button>
+        <button class="nav-btn" data-page="faq">
+            <span class="nav-icon">❓</span>
+            <span class="nav-label" data-i18n="nav.faq">FAQ</span>
+        </button>
+    </nav>
+
+        <script src="/assets/js/config.js"></script>
+    <script src="/assets/js/i18n.js"></script>
+    <script src="/assets/js/state.js"></script>
+    <script src="/assets/js/video.js"></script>
+    <script src="/assets/js/navigation.js"></script>
+    <script src="/assets/js/cashout.js"></script>
+    <script src="/assets/js/quests.js"></script>
+    <script src="/assets/js/app.js"></script>
+</body>
+</html>
