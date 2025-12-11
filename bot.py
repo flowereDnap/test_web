@@ -21,7 +21,6 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.types import InputFile, Message
 
 
-
 from aiogram.types import InputFile, ContentType
 from aiogram import Bot, Dispatcher
 
@@ -337,7 +336,6 @@ class BroadcastStates(StatesGroup):
 
 
 # ---------- Handlers (Важный порядок: Специфичные -> Общие) ----------
-
 @dp.message(F.text == "/start")
 async def start_handler(message: Message):
     text = message.text or ""

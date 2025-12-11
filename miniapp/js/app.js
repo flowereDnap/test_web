@@ -6,6 +6,7 @@ class MiniApp {
         this.state = new AppState();
         this.videoPlayer = new VideoPlayer(this);
         this.navigation = new Navigation(this);
+        this.referralLink = null;
         
         this.init();
     }
@@ -20,6 +21,9 @@ class MiniApp {
         
         // Apply translations
         applyTranslations(this.currentLang);
+
+        //Генерация реферальной ссылки
+        this.referralLink = this.generateReferralLink();
         
         // Initialize earn button
         this.initButtons();
@@ -32,6 +36,20 @@ class MiniApp {
             console.log('User:', this.tg.initDataUnsafe.user);
             console.log('Language:', this.currentLang);
         }
+    }
+
+    // Для генерации ссылки
+    generateReferralLink() {
+        const userId = this.tg.initDataUnsafe.user?.id;
+        const botUsername = CONFIG.botUsername; 
+        const referralLink = this.referralLink;
+
+        if (userId && botUsername) {
+            // Формат: https://t.me/BOT_USERNAME/start?startapp=ref_USER_ID
+            return `https://t.me/${botUsername}/start?startapp=ref_${userId}`;
+        }
+        // Запасной вариант, если ID или имя бота не найдены
+        return 'https://t.me/your_mini_app_fallback?start=ref_error'; 
     }
 
     applyTelegramTheme() {
@@ -88,10 +106,11 @@ class MiniApp {
         // --- 2. Кнопки страницы "Квесты" (Referral Actions) ---
         const copyBtn = document.getElementById('copy-link-btn');
         const inviteBtn = document.getElementById('invite-btn');
+
+        const referralLink = this.referralLink;
         
         if (copyBtn) {
             copyBtn.addEventListener('click', async () => {
-                const referralLink = 'https://t.me/your_mini_app?start=ref123'; 
                 try {
                     // Используем буфер обмена браузера
                     await navigator.clipboard.writeText(referralLink);
@@ -103,40 +122,35 @@ class MiniApp {
             });
         }
         
-        if (inviteBtn) {
-    inviteBtn.addEventListener('click', () => {
-        const referralLink = 'https://t.me/your_mini_app?start=ref123';
-        // Убедитесь, что текст, который вы хотите передать, закодирован
-        const inviteText = `👋 Присоединяйся и зарабатывай, просматривая видео! Это просто и быстро. Твоя реферальная ссылка:`; 
-        
-        // Кодируем обе части для корректной работы URL
-        const encodedLink = encodeURIComponent(referralLink);
-        const encodedText = encodeURIComponent(inviteText);
-        
-        // Формируем универсальную ссылку для шаринга через Telegram
-        const shareUrl = `https://t.me/share/url?url=${encodedLink}&text=${encodedText}`;
+        // Логика кнопки "Пригласить" (Поделиться)
+        if (inviteBtn && referralLink) {
+            inviteBtn.addEventListener('click', () => {
+                // Текст приглашения
+                const inviteText = `👋 Присоединяйся и зарабатывай, просматривая видео! Это просто и быстро. Твоя реферальная ссылка:`; 
+                const fullMessage = inviteText + ' ' + referralLink;
 
-        if (this.tg && this.tg.showSharePopup) {
-            // 1. ПРЕДПОЧТИТЕЛЬНЫЙ ВАРИАНТ
-            this.tg.showSharePopup({ 
-                message: inviteText + ' ' + referralLink 
+                // 1. ПРЕДПОЧТИТЕЛЬНЫЙ ВАРИАНТ (через pop-up шаринга Telegram SDK)
+                if (this.tg && this.tg.showSharePopup) {
+                    this.tg.showSharePopup({ 
+                        message: fullMessage 
+                    });
+                    
+                } else if (this.tg && this.tg.openTelegramLink) {
+                    // 2. РЕЗЕРВНЫЙ ВАРИАНТ: Используем https://t.me/share/url
+                    const encodedLink = encodeURIComponent(referralLink);
+                    const encodedText = encodeURIComponent(inviteText);
+                    const shareUrl = `https://t.me/share/url?url=${encodedLink}&text=${encodedText}`;
+
+                    this.tg.openTelegramLink(shareUrl); 
+                    showToast('🔗 Открыто окно выбора чата в Telegram.');
+
+                } else {
+                    // 3. ПОСЛЕДНИЙ ЗАПАСНОЙ ВАРИАНТ: Копирование в буфер
+                    navigator.clipboard.writeText(fullMessage);
+                    showToast('⚠️ Функция недоступна. Текст приглашения скопирован!');
+                }
             });
-            
-        } else if (this.tg && this.tg.openTelegramLink) {
-            // 2. РЕЗЕРВНЫЙ ВАРИАНТ: Используем https://t.me/share/url
-            
-            // openTelegramLink принимает только tg:// или t.me/
-            this.tg.openTelegramLink(shareUrl); 
-            showToast('🔗 Открыто окно выбора чата в Telegram.');
-
-        } else {
-            // 3. ПОСЛЕДНИЙ ЗАПАСНОЙ ВАРИАНТ: Копирование в буфер
-            const fullMessage = inviteText + ' ' + referralLink;
-            navigator.clipboard.writeText(fullMessage);
-            showToast('⚠️ Функция недоступна. Текст приглашения скопирован!');
         }
-    });
-}
 
         // --- 3. Интеграция внешней логики (Quests и FAQ) ---
         
@@ -191,7 +205,21 @@ class MiniApp {
         }, 2000);
     }
 
-    
+    async checkQuestStatus(questId) {
+        // В реальном приложении: отправка запроса на ваш сервер
+        console.log(`[API] Checking quest ${questId} status...`);
+        
+        // Имитация задержки и ответа сервера
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        
+        // Здесь ваш сервер должен вернуть, завершен квест или нет.
+        // Примеры:
+        if (questId === 'quest_casino_reg' && Math.random() < 0.3) {
+            return { isCompleted: true, reward: 1.00 }; // 30% шанс выполнения для имитации
+        }
+        
+        return { isCompleted: false, reward: 0 };
+    }
 }
 
 // ==================== INITIALIZE APP ====================
@@ -310,6 +338,8 @@ function setupFaqToggle() {
         }
     });
 }
+
+
 
 
 const faqData = [

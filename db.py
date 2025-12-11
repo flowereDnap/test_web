@@ -473,6 +473,22 @@ class DatabaseManager:
         await self.settings_db.create_settings_table()
         await self.stats_db_manager.create_stats_table()
 
+    async def create_quest_statuses_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS user_quest_statuses (
+            id BIGSERIAL PRIMARY KEY,
+            telegram_id BIGINT REFERENCES tg_users(telegram_id) ON DELETE CASCADE,
+            quest_id TEXT NOT NULL,
+            status TEXT NOT NULL, -- 'visited', 'completed', 'unclaimed'
+            updated_at TIMESTAMPTZ DEFAULT now(),
+            UNIQUE (telegram_id, quest_id)
+        );
+        -- Индекс для быстрого поиска по пользователю
+        CREATE INDEX IF NOT EXISTS idx_user_quest_status ON user_quest_statuses (telegram_id, status);
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(query)
+
     async def get_all_users(self) -> list[int]:
         """
         Возвращает список всех telegram_id для рассылки.
@@ -482,6 +498,7 @@ class DatabaseManager:
             # fetchcol возвращает список значений из первого столбца
             rows = await conn.fetch(query)
             return [row['telegram_id'] for row in rows]
+        
 
 
     async def close(self):
