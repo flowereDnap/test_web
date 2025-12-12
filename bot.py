@@ -46,6 +46,13 @@ WEBHOOK_PATH = os.getenv("WEBHOOK_PATH", "/webhook/telegram")
 WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+CSP_HEADER = (
+    "default-src 'self';"
+    "script-src 'self' 'wasm-unsafe-eval' https://t.me/ https://telegram.me/ https://telegram.org/;"  # <-- ДОБАВЛЕН https://telegram.org/
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
+    "font-src 'self' https://fonts.gstatic.com;"
+    "img-src 'self' data: https://ngrok.com;"
+)
 
 if not BOT_TOKEN:
     print("ERROR: BOT_TOKEN not set in .env")
@@ -74,6 +81,21 @@ dp = Dispatcher(storage=storage)
 
 
 # ---------- Helper functions (DB-backed) ----------
+
+async def handle_web_app(request):
+
+    html_path = os.path.join(PROJ_ROOT, 'miniapp', 'index.html')
+    # Загружаем содержимое index.html
+    with open(html_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+
+    # Создаем текстовый ответ
+    response = web.Response(text=html_content, content_type='text/html')
+    
+    # !!! КРИТИЧЕСКИЙ ШАГ: Добавление заголовка CSP !!!
+    response.headers['Content-Security-Policy'] = CSP_HEADER
+    
+    return response
 
 # Предположим, что награды и цели MilestoneQuest хранятся тут (или в БД)
 MILESTONE_QUESTS = {
@@ -113,6 +135,29 @@ async def check_milestone_quest_completion(telegram_id: int, counter_key: str, n
                 
     return {"is_completed": False}
 
+async def mark_quest_visited(request):
+    try:
+        # 1. Получаем данные из запроса
+        data = await request.json()
+        telegram_id = data.get('telegram_id')
+        quest_id = data.get('quest_id')
+        
+        # Проверка данных
+        if not telegram_id or not quest_id:
+            return web.json_response({'status': 'error', 'error': 'Missing telegram_id or quest_id'}, status=400)
+            
+        # 2. Здесь ваша логика БД (SQL или ORM):
+        # Обновите запись в базе данных, чтобы установить статус 'visited' для данного квеста
+        # ... (db_session.execute(update_quest_status(telegram_id, quest_id, 'visited')))
+        
+        print(f"Quest {quest_id} marked as VISITED for user {telegram_id}.")
+
+        # 3. Возвращаем успешный ответ
+        return web.json_response({'status': 'ok'})
+
+    except Exception as e:
+        print(f"Error in mark_quest_visited: {e}")
+        return web.json_response({'status': 'error', 'error': 'Internal server error'}, status=500)
 
 # Обновленный video_watched_handler
 async def video_watched_handler(request: web.Request):
@@ -435,7 +480,7 @@ async def get_quests_statuses(request: web.Request):
     quests_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
     
     # 2. Получаем баланс
-    user = await db_manager.users_db.get_user(telegram_id) # Предполагается, что такой метод есть
+    user = await db_manager.users_db.get_user_by_telegram_id(telegram_id) # Предполагается, что такой метод есть
     if not user:
         return web.json_response({"error": "User not found"}, status=404)
     balance = float(user['balance'])
@@ -758,12 +803,13 @@ async def start_app():
     app = web.Application(middlewares=[cors_middleware])
 
     # маршруты: webhook (POST), api и статика
-    app.router.add_post(f"{WEBHOOK_PATH}/{{secret}}", handle_webhook)
+    app.router.add_get('/', handle_web_app)
     app.router.add_get("/api/video/random", get_random_video)
     app.router.add_post("/api/video/watched", video_watched_handler)
+    app.router.add_get("/api/quest/statuses", get_quests_statuses)
+    app.router.add_post('/api/quest/visited', mark_quest_visited)
 
-    # раздача миниаппа (если папка miniapp есть в проекте)
-    app.router.add_get('/', root_redirect)
+    app.router.add_post(f"{WEBHOOK_PATH}/{{secret}}", handle_webhook)
 
     # Serve miniapp folder (CSS/JS/images) under '/'
     miniapp_path = PROJ_ROOT / "miniapp"

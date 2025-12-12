@@ -22,23 +22,55 @@ class Quest {
      * Создает HTML-элемент для отображения квеста.
      * @returns {HTMLElement}
      */
+    /**
+ * Создает HTML-элемент для отображения квеста, используя безопасный DOM API.
+ * @returns {HTMLElement}
+ */
     toHtml() {
+        // 1. Создаем основной элемент
         const item = document.createElement('div');
         item.className = `quest-item ${this.isCompleted ? 'completed' : ''}`;
         item.dataset.questId = this.id;
 
-        const titleClass = this.isCompleted ? 'quest-title completed-title' : 'quest-title';
-        const buttonContent = this.isCompleted 
-            ? '<span class="check-btn completed-icon">✔</span>' 
-            : `<button class="check-btn primary-btn">${this.buttonText}</button>`;
+        // 2. Создаем контейнер деталей (quest-details)
+        const details = document.createElement('div');
+        details.className = 'quest-details';
 
-        item.innerHTML = `
-            <div class="quest-details">
-                <h3 class="${titleClass}">${this.title}</h3>
-                <p class="quest-reward">${this.reward}</p>
-            </div>
-            ${buttonContent}
-        `;
+        // 3. Создаем заголовок (h3)
+        const titleElement = document.createElement('h3');
+        const titleClass = this.isCompleted ? 'quest-title completed-title' : 'quest-title';
+        titleElement.className = titleClass;
+        titleElement.textContent = this.title;
+
+        // 4. Создаем награду (p)
+        const rewardElement = document.createElement('p');
+        rewardElement.className = 'quest-reward';
+        rewardElement.textContent = this.reward;
+        
+        // Сборка деталей
+        details.appendChild(titleElement);
+        details.appendChild(rewardElement);
+        item.appendChild(details);
+
+        // 5. Создаем кнопку или иконку выполнения
+        let actionElement;
+        
+        if (this.isCompleted) {
+            // Если выполнено, создаем <span> с галочкой
+            actionElement = document.createElement('span');
+            actionElement.className = 'check-btn completed-icon';
+            actionElement.textContent = '✔';
+        } else {
+            // Если не выполнено, создаем <button>
+            actionElement = document.createElement('button');
+            actionElement.className = 'check-btn primary-btn';
+            actionElement.textContent = this.buttonText;
+            actionElement.disabled = this.isCompleted;
+        }
+
+        // 6. Добавляем элемент действия в основной элемент
+        item.appendChild(actionElement);
+
         return item;
     }
 
@@ -75,29 +107,42 @@ class FollowQuest extends Quest {
         item.className = `quest-item ${this.isCompleted ? 'completed' : ''}`;
         item.dataset.questId = this.id;
 
-        const titleClass = this.isCompleted ? 'quest-title completed-title' : 'quest-title';
-        
-        let buttonText;
-        if (this.isCompleted) {
-            buttonText = 'Получено'; // Или "Получить награду", но пусть будет конечным состоянием
-        } else if (this.isLinkVisited) {
-            buttonText = 'Проверить'; // После перехода кнопка меняется
-        } else {
-            buttonText = 'Перейти'; // Изначальное состояние
-        }
-        
-        // Кнопка, если квест не завершен
-        const buttonContent = this.isCompleted 
-            ? '<span class="check-btn completed-icon">✔</span>' 
-            : `<button class="check-btn primary-btn">${buttonText}</button>`;
+        const details = document.createElement('div');
+        details.className = 'quest-details';
 
-        item.innerHTML = `
-            <div class="quest-details">
-                <h3 class="${titleClass}">${this.title}</h3>
-                <p class="quest-reward">${this.reward}</p>
-            </div>
-            ${buttonContent}
-        `;
+        const titleElement = document.createElement('h3');
+        titleElement.className = this.isCompleted ? 'quest-title completed-title' : 'quest-title';
+        titleElement.textContent = this.title;
+
+        const rewardElement = document.createElement('p');
+        rewardElement.className = 'quest-reward';
+        rewardElement.textContent = this.reward;
+        
+        details.appendChild(titleElement);
+        details.appendChild(rewardElement);
+        item.appendChild(details);
+
+        // --- Логика КНОПКИ ---
+        let buttonContentElement;
+        
+        if (this.isCompleted) {
+            buttonContentElement = document.createElement('span');
+            buttonContentElement.className = 'check-btn completed-icon';
+            buttonContentElement.textContent = '✔';
+        } else {
+            let buttonText;
+            if (this.isLinkVisited) {
+                buttonText = 'Проверить'; // После перехода кнопка меняется
+            } else {
+                buttonText = 'Перейти'; // Изначальное состояние
+            }
+            
+            buttonContentElement = document.createElement('button');
+            buttonContentElement.className = 'check-btn primary-btn';
+            buttonContentElement.textContent = buttonText;
+        }
+
+        item.appendChild(buttonContentElement);
         return item;
     }
     
@@ -115,15 +160,56 @@ class MilestoneQuest extends Quest {
     }
     
     toHtml() {
+        // 1. Используем базовый рендеринг
         const htmlItem = super.toHtml();
-        // Добавляем индикатор прогресса (если квест не завершен)
+        
+        // 2. Добавляем индикатор прогресса (если квест не завершен)
         if (!this.isCompleted) {
             const progress = document.createElement('span');
             progress.className = 'quest-progress';
             progress.textContent = ` (${this.currentCount}/${this.requiredCount})`;
-            htmlItem.querySelector('.quest-title').appendChild(progress);
+            
+            // Находим h3 внутри quest-details
+            const titleElement = htmlItem.querySelector('.quest-details h3'); 
+            
+            if (titleElement) {
+                // Добавляем текст прогресса рядом с заголовком
+                titleElement.appendChild(progress);
+                
+                // Создаем и добавляем сам прогресс-бар
+                const progressBarElement = this._renderProgressBar(); // Вызываем внутренний метод
+                htmlItem.querySelector('.quest-details').appendChild(progressBarElement);
+            }
         }
         return htmlItem;
+    }
+
+    /**
+     * Вспомогательный метод для рендеринга прогресс-бара
+     */
+    _renderProgressBar() {
+        const percent = Math.min(100, (this.currentCount / this.requiredCount) * 100).toFixed(0);
+        const progressText = `${this.currentCount} из ${this.requiredCount}`;
+
+        const progressBarContainer = document.createElement('div');
+        progressBarContainer.className = 'quest-progress-bar';
+
+        const track = document.createElement('div');
+        track.className = 'progress-track';
+
+        const fill = document.createElement('div');
+        fill.className = `progress-fill ${this.isCompleted ? 'completed-fill' : ''}`;
+        fill.style.width = `${percent}%`;
+
+        const text = document.createElement('div');
+        text.className = 'progress-text';
+        text.textContent = progressText;
+
+        track.appendChild(fill);
+        progressBarContainer.appendChild(track);
+        progressBarContainer.appendChild(text);
+
+        return progressBarContainer;
     }
 }
 
@@ -198,49 +284,61 @@ function renderQuests(ALL_QUESTS_DATA) {
     if (!container) return;
 
     // 1. Очистка контейнера перед рендерингом
-    container.innerHTML = ''; 
+    container.innerHTML = ''; // Очистка, тут innerHTML допустим
 
     ALL_QUESTS_DATA.forEach(quest => {
         const questItem = document.createElement('div');
         questItem.className = 'quest-item';
         questItem.dataset.id = quest.id;
 
-        // 2. Кнопка и статус
-        const button = document.createElement('button');
-        button.className = 'quest-button';
-        button.disabled = quest.isCompleted;
-
-        // Определяем текст кнопки
-        if (quest.isCompleted) {
-            button.textContent = '✅ Выполнено';
-        } else if (quest instanceof FollowQuest) {
-            button.textContent = quest.isLinkVisited ? 'Проверить' : 'Перейти';
-        } else if (quest instanceof MilestoneQuest) {
-             // Кнопка для MilestoneQuest неактивна до выполнения
-             button.textContent = quest.isCompleted ? '✅ Выполнено' : 'В процессе';
-             button.disabled = true;
-        } else {
-             button.textContent = 'Начать';
-        }
-        
-        // Если квест выполнен, применяем класс и отключаем кнопку
-        if (quest.isCompleted) {
-            markQuestCompleted(questItem, button); 
-        }
-
-        // 3. Рендеринг контента (включая прогресс-бар)
+        // --- 1. Контент Квеста (замена innerHTML) ---
         const questContent = document.createElement('div');
         questContent.className = 'quest-content';
-        questContent.innerHTML = `
-            <div class="quest-info">
-                <div class="quest-title">${quest.title}</div>
-                <div class="quest-reward">${quest.reward}</div>
-            </div>
-            ${quest instanceof MilestoneQuest ? renderProgressBar(quest) : ''}
-        `;
+        
+        const questInfo = document.createElement('div');
+        questInfo.className = 'quest-info';
+        
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'quest-title';
+        titleDiv.textContent = quest.title;
+        
+        const rewardDiv = document.createElement('div');
+        rewardDiv.className = 'quest-reward';
+        rewardDiv.textContent = quest.reward;
+        
+        questInfo.appendChild(titleDiv);
+        questInfo.appendChild(rewardDiv);
+        questContent.appendChild(questInfo);
+        
+        // Добавление прогресс-бара
+        if (quest instanceof MilestoneQuest) {
+            const progressBarElement = renderProgressBar(quest);
+            if (progressBarElement) {
+                questContent.appendChild(progressBarElement);
+            }
+        }
         questItem.appendChild(questContent);
         
-        // 4. Добавление кнопки и элемента в контейнер
+        // --- 2. Кнопка и статус ---
+        const button = document.createElement('button');
+        button.className = 'primary-btn quest-button';
+        button.disabled = quest.isCompleted;
+        let buttonText = 'Начать';
+        if (quest.isCompleted) {
+             buttonText = '✅ Выполнено';
+        } else if (quest instanceof FollowQuest) {
+             buttonText = quest.isLinkVisited ? 'Проверить' : 'Перейти';
+        } else if (quest instanceof MilestoneQuest) {
+             buttonText = 'В процессе';
+             button.disabled = true; // Кнопка MilestoneQuest неактивна до выполнения
+        }
+        button.textContent = buttonText;
+        
+        if (quest.isCompleted) {
+            markQuestCompleted(questItem, button); // Применяем классы
+        }
+
+        // 3. Добавление кнопки и элемента в контейнер
         const buttonContainer = document.createElement('div');
         buttonContainer.className = 'quest-button-container';
         buttonContainer.appendChild(button);
@@ -258,7 +356,7 @@ function renderQuestList(questsArray) {
     const questsListContainer = document.getElementById('quests-list');
     if (!questsListContainer) return;
 
-    questsListContainer.innerHTML = ''; // Очищаем статический контент
+    questsListContainer.innerHTML = ''; // Очищаем
 
     questsArray.forEach(quest => {
         questsListContainer.appendChild(quest.toHtml());
@@ -272,16 +370,42 @@ function renderQuestList(questsArray) {
  * @param {MiniApp} app - Экземпляр главного приложения.
  */
 // [ИЗМЕНЕНИЕ] Передаем ALL_QUESTS_DATA
+/**
+ * Обрабатывает нажатие на кнопку "Проверить", "Перейти" или "Получить награду".
+ * @param {MiniApp} app - Экземпляр главного приложения.
+ * @param {Array<Quest>} ALL_QUESTS_DATA - Массив объектов Quest.
+ */
 function setupQuestHandlers(app, ALL_QUESTS_DATA) {
     const questsList = document.getElementById('quests-list');
 
     questsList.addEventListener('click', async (e) => {
-        // ... (поиск кнопки и questId) ...
+        
+        // 1. Находим кнопку, на которую кликнули
+        const button = e.target.closest('.quest-button');
+        if (!button) return; 
 
-        // 1. Находим объект квеста
-        const questObject = ALL_QUESTS_DATA.find(q => q.id === questId);
+        // 2. Находим родительский элемент квеста
+        const questItem = e.target.closest('.quest-item');
+        if (!questItem) return; 
+        
+        // 3. Получаем questId из data-атрибута (ИСПРАВЛЕНИЕ ReferenceError)
+        const questId = questItem.dataset.id; 
+        if (!questId) return;
 
-        // ... (проверки и отключение кнопки) ...
+        // 4. Находим объект квеста
+        const questObject = ALL_QUESTS_DATA.find(q => q.id === questId); 
+
+        // Дополнительная проверка, если квест уже выполнен или объект не найден
+        if (!questObject || questObject.isCompleted) {
+            // Если кнопка не 'completed-icon', она должна быть неактивна в HTML, 
+            // но на всякий случай тут можно вернуть ошибку/сообщение.
+             return; 
+        }
+
+        // Отключаем кнопку на время обработки
+        button.disabled = true;
+
+        let apiResult = { isCompleted: false, reward: 0 };
         
         // --- 1. FollowQuest (Подписка на канал / Казино) ---
         if (questObject instanceof FollowQuest) {
@@ -289,11 +413,11 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
             // A) Состояние "Перейти" (Клик первый раз)
             if (!questObject.isLinkVisited) {
                 
-                // 1. Отмечаем переход на сервере (СОХРАНЯЕМ СТАТУС)
-                const apiResult = await app.markQuestVisited(questId);
+                // 1. Отмечаем переход на сервере (СОХРАНЯЕМ СТАТУС 'visited')
+                const visitResult = await app.markQuestVisited(questId);
                 
-                if (apiResult.success) {
-                    // 2. Открываем ссылку (как и раньше)
+                if (visitResult.success) {
+                    // 2. Открываем ссылку
                     if (app.tg && app.tg.openTelegramLink) {
                         app.tg.openTelegramLink(questObject.targetLink); 
                     } else {
@@ -305,35 +429,70 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
                     button.textContent = 'Проверить'; 
                     app.showToast('➡️ Перейдите по ссылке, выполните и нажмите "Проверить".');
                 } else {
-                     app.showToast('⚠️ Ошибка сохранения статуса.', 'error');
+                    app.showToast('⚠️ Ошибка сохранения статуса перехода.', 'error');
                 }
+                
+                button.disabled = false; // Включаем кнопку снова после обработки "Перейти"
+                return;
             }
             
-            // B) Состояние "Проверить" (Статус 'visited' был загружен с сервера)
+            // B) Состояние "Проверить" (Статус 'visited')
             else if (questObject.isLinkVisited) {
                 button.textContent = '...'; // Индикатор загрузки
 
-                // 1. Отправляем запрос на сервер для проверки (Тут все еще нужна реализация проверки на стороне бота!)
-                // Для демо-целей мы пока оставим имитацию, но в реале тут должен быть API-эндпоинт
-                // например: await app.checkQuestServer(questId);
-                
-                // *** ВРЕМЕННАЯ ИМИТАЦИЯ (нужно заменить на реальный API-вызов) ***
-                const result = await app.checkQuestStatus(questId); 
-                // *** КОНЕЦ ВРЕМЕННОЙ ИМИТАЦИИ ***
-                
-                // ... (обработка результата остается прежней) ...
-                if (result.isCompleted) {
-                    // ... (markQuestCompleted, updateBalance, showToast)
-                } else {
-                    button.textContent = 'Проверить'; 
-                    app.showToast('⚠️ Условия задания не выполнены. Попробуйте снова.');
-                }
+                // Отправляем запрос на сервер для проверки выполнения
+                apiResult = await app.checkQuestStatus(questId); 
             }
         
+        } 
+        
+        // --- 2. MilestoneQuest (Достижение цели) ---
+        else if (questObject instanceof MilestoneQuest) {
+            // Кнопка MilestoneQuest должна быть активна только если currentCount >= requiredCount
+            if (questObject.currentCount >= questObject.requiredCount && !questObject.isCompleted) {
+                button.textContent = '...'; // Индикатор загрузки
+                
+                // Отправляем запрос на сервер для завершения и получения награды
+                apiResult = await app.completeQuest(questId); // Предполагаем, что этот метод существует
+            } else {
+                // Если не достигнута цель, кнопка должна быть неактивна и не должна обрабатываться
+                button.disabled = false; 
+                return;
+            }
         }
         
-        // ... (логика MilestoneQuest остается прежней) ...
+        // --- ОБЩАЯ ЛОГИКА ЗАВЕРШЕНИЯ КВЕСТА ---
         
+        if (apiResult.isCompleted) {
+            // 1. Обновляем объект квеста
+            questObject.isCompleted = true;
+            
+            // 2. Обновляем UI
+            // Используем вспомогательную функцию для обновления DOM
+            app.markQuestCompleted(questItem, button); // Предполагаем, что этот метод существует в MiniApp/quests.js
+            
+            // 3. Обновляем баланс
+            if (apiResult.reward) {
+                app.state.updateBalance(apiResult.reward); // Используем updateBalance из state.js
+            } else {
+                // Если награда не пришла с сервера, используем награду из объекта квеста (для FollowQuest)
+                const rewardAmount = parseFloat(questObject.reward.replace('+', '').replace('$', '')) || 0;
+                app.state.updateBalance(rewardAmount); 
+            }
+            
+            // 4. Показываем сообщение
+            app.showToast(`🎉 Квест "${questObject.title}" выполнен! Получено ${questObject.reward}.`, 'success');
+
+        } else if (questObject.isLinkVisited) {
+            // Если FollowQuest проверялся, но не выполнен
+            button.textContent = 'Проверить'; 
+            app.showToast('⚠️ Условия задания не выполнены. Попробуйте снова.', 'error');
+        } else if (questObject instanceof MilestoneQuest) {
+             // Если MilestoneQuest проверялся, но сервер отказал
+            button.textContent = 'Получить награду';
+            app.showToast('⚠️ Ошибка при получении награды.', 'error');
+        }
+
         button.disabled = false;
     });
 }
@@ -352,20 +511,29 @@ function markQuestCompleted(questItem, button) {
 
 // Новая вспомогательная функция для рендеринга прогресс-бара
 function renderProgressBar(quest) {
-    if (!(quest instanceof MilestoneQuest)) return '';
+    if (!(quest instanceof MilestoneQuest)) return null; // Возвращаем null вместо пустой строки
 
     const percent = Math.min(100, (quest.currentCount / quest.goal) * 100).toFixed(0);
     const progressText = `${quest.currentCount} из ${quest.goal}`;
-    
-    return `
-        <div class="quest-progress-bar">
-            <div class="progress-track">
-                <div 
-                    class="progress-fill ${quest.isCompleted ? 'completed-fill' : ''}" 
-                    style="width: ${percent}%;">
-                </div>
-            </div>
-            <div class="progress-text">${progressText}</div>
-    `;
+
+    const progressBarContainer = document.createElement('div');
+    progressBarContainer.className = 'quest-progress-bar';
+
+    const track = document.createElement('div');
+    track.className = 'progress-track';
+
+    const fill = document.createElement('div');
+    fill.className = `progress-fill ${quest.isCompleted ? 'completed-fill' : ''}`;
+    fill.style.width = `${percent}%`;
+
+    const text = document.createElement('div');
+    text.className = 'progress-text';
+    text.textContent = progressText;
+
+    track.appendChild(fill);
+    progressBarContainer.appendChild(track);
+    progressBarContainer.appendChild(text);
+
+    return progressBarContainer; // Возвращаем элемент
 }
 

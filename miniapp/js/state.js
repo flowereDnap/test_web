@@ -34,6 +34,10 @@ class AppState {
         return this.balance.toFixed(2);
     }
 
+    setBalance(newBalance) {
+        this._balance = parseFloat(newBalance) || 0.00;
+    }
+
     getTodayCount() {
         return this.todayCount;
     }

@@ -235,13 +235,6 @@ class MiniApp {
                 }
             });
         }
-
-        // --- 3. Интеграция внешней логики (Quests и FAQ) ---
-        
-        // 🎯 Квесты: Логика кликов обрабатывается в js/quests.js
-        if (typeof setupQuestHandlers !== 'undefined') {
-            setupQuestHandlers(this); // Инициализация обработчиков квестов
-        }
         
         // ❓ FAQ: Логика рендеринга и кликов
         if (typeof renderFaqList !== 'undefined') {
@@ -363,10 +356,22 @@ function createFaqItem(title, description) {
     const toggleButton = document.createElement('button');
     toggleButton.className = 'faq-toggle';
     
-    toggleButton.innerHTML = `
-        <span class="faq-arrow">❯</span>
-        <span class="faq-title">${title}</span>
-    `;
+    // --- ИСПРАВЛЕНИЕ: Заменяем innerHTML на createElement и textContent ---
+    
+    // 1. Стрелка (Arrow)
+    const arrowSpan = document.createElement('span');
+    arrowSpan.className = 'faq-arrow';
+    arrowSpan.textContent = '❯'; // Символ стрелки
+    
+    // 2. Заголовок (Title)
+    const titleSpan = document.createElement('span');
+    titleSpan.className = 'faq-title';
+    titleSpan.textContent = title;
+    
+    // Сборка toggleButton
+    toggleButton.appendChild(arrowSpan);
+    toggleButton.appendChild(titleSpan);
+    // -------------------------------------------------------------------
 
     // Обертка для контента (для анимации)
     const contentWrapper = document.createElement('div');
@@ -394,13 +399,15 @@ function renderFaqList() {
         
         // Перебираем массив данных и создаем элементы
         faqData.forEach(item => {
-            const faqElement = createFaqItem(item.title, item.description);
+            // Используем исправленный createFaqItem
+            const faqElement = createFaqItem(item.title, item.description); 
             faqListContainer.appendChild(faqElement);
         });
     }
 
     // После рендеринга можно настроить обработчики событий
-    setupFaqToggle();
+    // Эта функция должна быть определена где-то еще в вашем коде (например, в app.js)
+    setupFaqToggle(); 
 }
 
 function setupFaqToggle() {

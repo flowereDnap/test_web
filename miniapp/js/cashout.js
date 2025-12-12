@@ -71,20 +71,29 @@ let userBalance = 100.00;
  * Renders the list of cashout options from the CASHOUT_OPTIONS array.
  */
 function renderCashoutOptions() {
-    cashoutOptionsList.innerHTML = ''; // Clear existing content
+    // Очистка допустима, так как нет вложенного инлайнового JS
+    cashoutOptionsList.innerHTML = ''; 
 
     CASHOUT_OPTIONS.forEach(option => {
         const button = document.createElement('button');
         button.className = 'cashout-option-btn';
         button.dataset.optionId = option.id;
-        button.innerHTML = `
-            <span class="option-icon">${option.icon}</span>
-            <span class="option-name">${option.name}</span>
-        `;
+
+        const iconSpan = document.createElement('span');
+        iconSpan.className = 'option-icon';
+        iconSpan.textContent = option.icon;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'option-name';
+        nameSpan.textContent = option.name;
+        
+        // Сборка
+        button.appendChild(iconSpan);
+        button.appendChild(nameSpan);
+
         cashoutOptionsList.appendChild(button);
     });
 }
-
 /**
  * Displays the cashout modal.
  */
