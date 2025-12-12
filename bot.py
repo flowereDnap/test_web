@@ -74,6 +74,80 @@ dp = Dispatcher(storage=storage)
 
 
 # ---------- Helper functions (DB-backed) ----------
+
+# Предположим, что награды и цели MilestoneQuest хранятся тут (или в БД)
+MILESTONE_QUESTS = {
+    'milestone_watch_5': {'goal': 5, 'reward': 0.10}
+}
+
+async def check_milestone_quest_completion(telegram_id: int, counter_key: str, new_count: int):
+    """
+    Проверяет, достигнута ли цель для квеста просмотра видео.
+    Если достигнута и не был завершен ранее, начисляет награду.
+    """
+    if counter_key == 'videos_watched':
+        quest_id = 'milestone_watch_5'
+        quest_config = MILESTONE_QUESTS.get(quest_id)
+        
+        if not quest_config:
+            return # Квест не найден
+
+        if new_count >= quest_config['goal']:
+            # 1. Проверяем статус в БД
+            user_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
+            current_status = next((s['status'] for s in user_statuses if s['quest_id'] == quest_id), None)
+            
+            if current_status != 'completed':
+                # 2. Если не завершен, обновляем статус на 'completed'
+                await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'completed')
+                
+                # 3. Начисляем награду (атомарно)
+                reward = quest_config['reward']
+                async with db_manager.users_db.pool.acquire() as conn:
+                    await conn.execute(
+                        "UPDATE tg_users SET balance = balance + $1 WHERE telegram_id = $2;",
+                        reward, telegram_id
+                    )
+                # Возвращаем информацию о завершении
+                return {"is_completed": True, "reward": reward}
+                
+    return {"is_completed": False}
+
+
+# Обновленный video_watched_handler
+async def video_watched_handler(request: web.Request):
+    """
+    POST /api/video/watched
+    Отмечает просмотр видео и проверяет выполнение MilestoneQuest.
+    """
+    try:
+        data = await request.json()
+        telegram_id = data.get("telegram_id")
+        video_id = data.get("video_id")
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    if not telegram_id or not video_id:
+        return web.json_response({"error": "Missing fields"}, status=400)
+
+    # 1. Увеличиваем общий счетчик просмотров видео в таблице `videos`
+    await db_manager.videos_db.increment_watched(video_id)
+
+    # 2. Увеличиваем счетчик просмотров ДЛЯ ПОЛЬЗОВАТЕЛЯ в новой таблице `user_counters`
+    new_count = await db_manager.counters_db.increment_counter(
+        telegram_id=telegram_id, 
+        counter_key='videos_watched'
+    )
+
+    # 3. Проверяем, выполнил ли пользователь квест
+    quest_result = await check_milestone_quest_completion(telegram_id, 'videos_watched', new_count)
+
+    return web.json_response({
+        "status": "ok",
+        "videos_watched_count": new_count,
+        "quest_completed": quest_result["is_completed"]
+    })
+
 def get_admin_id() -> int:
     return ADMIN_ID
 
@@ -277,23 +351,6 @@ async def get_random_video(request: web.Request):
         "video_url": vurl
     })
 
-async def video_watched_handler(request: web.Request):
-    """
-    POST /api/video/watched
-    body: { video_id: int, telegram_id: int }
-    """
-    try:
-        data = await request.json()
-    except Exception:
-        return web.json_response({"error": "Invalid JSON"}, status=400)
-
-    video_id = data.get("video_id")
-    telegram_id = data.get("telegram_id")
-    if not video_id or not telegram_id:
-        return web.json_response({"error": "Missing fields"}, status=400)
-
-    await db_manager.videos_db.increment_watched(video_id)
-    return web.json_response({"status": "ok"})
 
 # ---------- Keyboards ----------
 def user_keyboard():
@@ -336,6 +393,67 @@ class BroadcastStates(StatesGroup):
 
 
 # ---------- Handlers (Важный порядок: Специфичные -> Общие) ----------
+
+# --- НОВЫЙ ОБРАБОТЧИК: mark_visited_handler ---
+async def mark_visited_handler(request: web.Request):
+    """
+    POST /api/quest/visited
+    body: { quest_id: str, telegram_id: int }
+    """
+    try:
+        data = await request.json()
+        quest_id = data.get("quest_id")
+        telegram_id = data.get("telegram_id")
+    except Exception:
+        return web.json_response({"error": "Invalid JSON"}, status=400)
+
+    if not quest_id or not telegram_id:
+        return web.json_response({"error": "Missing fields"}, status=400)
+    
+    # ИСПОЛЬЗУЕМ НОВЫЙ МЕНЕДЖЕР
+    await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'visited')
+    
+    return web.json_response({"status": "ok", "message": f"Quest {quest_id} marked as visited"})
+
+
+# --- НОВЫЙ ОБРАБОТЧИК: get_quests_statuses ---
+async def get_quests_statuses(request: web.Request):
+    """
+    GET /api/quest/statuses?telegram_id=<id>
+    Возвращает JSON с текущими статусами квестов пользователя.
+    """
+    telegram_id_str = request.query.get("telegram_id")
+    if not telegram_id_str:
+        return web.json_response({"error": "Missing telegram_id"}, status=400)
+    
+    try:
+        telegram_id = int(telegram_id_str)
+    except ValueError:
+        return web.json_response({"error": "Invalid telegram_id"}, status=400)
+        
+    # 1. Получаем статусы квестов
+    quests_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
+    
+    # 2. Получаем баланс
+    user = await db_manager.users_db.get_user(telegram_id) # Предполагается, что такой метод есть
+    if not user:
+        return web.json_response({"error": "User not found"}, status=404)
+    balance = float(user['balance'])
+    
+    # 3. Получаем текущий счетчик просмотров видео
+    videos_watched_count = await db_manager.counters_db.get_counter(telegram_id, 'videos_watched')
+    
+    # 4. Формируем ответ
+    return web.json_response({
+        "status": "ok",
+        "balance": balance,
+        "quests": quests_statuses,
+        "counters": {
+            "videos_watched": videos_watched_count
+        }
+    })
+
+
 @dp.message(F.text == "/start")
 async def start_handler(message: Message):
     text = message.text or ""
@@ -493,7 +611,7 @@ async def start_broadcast(message: types.Message, state: FSMContext):
         return
     await state.clear() # Начинаем с чистого листа
     await message.answer("Отправьте медиа-файл (картинка, гифка или видео) или документ")
-    await state.set_state(BroadcastStates.waiting_media)
+    await state.set_state(BroadcastStates.waiting_name)
 
 @dp.message(StateFilter(BroadcastStates.waiting_name))
 async def process_name(message: types.Message, state: FSMContext):
@@ -502,7 +620,10 @@ async def process_name(message: types.Message, state: FSMContext):
     await state.set_state(BroadcastStates.waiting_media)
 
 
-# bot.py (в функции process_media)
+@dp.message(StateFilter(BroadcastStates.waiting_media)) # Все остальные сообщения в этом состоянии
+async def process_media_invalid(message: types.Message, state: FSMContext):
+    await message.answer("⚠️ Пожалуйста, отправьте именно медиа-файл (картинку, гифку или видео) или документ для рассылки.")
+    # НЕ МЕНЯЕМ СОСТОЯНИЕ!
 
 @dp.message(StateFilter(BroadcastStates.waiting_media), F.content_type.in_({"photo", "video", "document", "animation"}))
 async def process_media(message: types.Message, state: FSMContext):

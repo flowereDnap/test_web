@@ -181,3 +181,34 @@
     padding: 8px 10px;
     pointer-events: none; 
 }
+
+
+.quest-progress-bar {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.progress-track {
+    background: var(--tg-theme-hint-color, #707070);
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0; /* Будет установлено JS */
+    background: var(--tg-theme-button-color, #60a9f5); /* Активный цвет */
+    transition: width 0.5s ease-out;
+}
+
+.progress-fill.completed-fill {
+    background: var(--tg-theme-secondary-bg-color, #228b22); /* Зеленый при завершении */
+}
+
+.progress-text {
+    font-size: 12px;
+    color: var(--tg-theme-hint-color, #aaaaaa);
+    text-align: right;
+    margin-top: 4px;
+}

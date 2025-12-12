@@ -7,6 +7,7 @@ class MiniApp {
         this.videoPlayer = new VideoPlayer(this);
         this.navigation = new Navigation(this);
         this.referralLink = null;
+        this.baseApiUrl = '/api';
         
         this.init();
     }
@@ -35,6 +36,89 @@ class MiniApp {
         if (CONFIG.debugMode) {
             console.log('User:', this.tg.initDataUnsafe.user);
             console.log('Language:', this.currentLang);
+        }
+    }
+
+    // Добавить этот метод в класс MiniApp
+    showToast(message, type = 'info') { 
+        // Используем глобальную функцию, которая работает с DOM, 
+        // или переносим логику DOM сюда.
+        // Для простоты, вызовем глобальную, но с проверкой:
+        if (typeof showToast !== 'undefined') {
+            showToast(message, type); // Предполагаем, что глобальная showToast принимает message и type
+        } else {
+            console.warn("showToast is missing, cannot display toast.");
+        }
+    }
+
+    // Метод для загрузки всех начальных данных
+    async loadInitialData() {
+        if (!this.tg.initDataUnsafe.user?.id) {
+            console.error("Telegram User ID is missing.");
+            this.showToast('Ошибка: Не удалось получить ID пользователя.', 'error');
+            return null;
+        }
+
+        const telegramId = this.tg.initDataUnsafe.user.id;
+        
+        try {
+            // 1. Запрос статусов квестов и баланса
+            const response = await fetch(`${this.baseApiUrl}/quest/statuses?telegram_id=${telegramId}`);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            
+            if (data.status === 'ok') {
+                // 2. Обновление баланса
+                this.state.setBalance(data.balance);
+                
+                // 3. Сохранение счетчиков
+                this.state.setCounters(data.counters || {}); 
+                
+                // 4. Возвращаем статусы квестов для инициализации в quests.js
+                return data.quests; // [{"quest_id": "...", "status": "visited"}, ...]
+            } else {
+                throw new Error(data.error || 'Unknown API error');
+            }
+        } catch (error) {
+            console.error('Error fetching initial data:', error);
+            this.showToast('Ошибка загрузки данных квестов.', 'error');
+            return null;
+        }
+    }
+    
+    // [ИЗМЕНЕНИЕ] Метод для сохранения факта перехода на сервер
+    async markQuestVisited(questId) {
+        if (!this.tg.initDataUnsafe.user?.id) {
+            this.showToast('Ошибка: ID пользователя отсутствует.', 'error');
+            return { success: false };
+        }
+        
+        const telegramId = this.tg.initDataUnsafe.user.id;
+        
+        try {
+            const response = await fetch(`${this.baseApiUrl}/quest/visited`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    telegram_id: telegramId,
+                    quest_id: questId,
+                }),
+            });
+            
+            if (!response.ok) {
+                 throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            return { success: data.status === 'ok' }; 
+            
+        } catch (error) {
+            console.error(`Error marking quest ${questId} as visited:`, error);
+            this.showToast('Ошибка сохранения статуса перехода.', 'error');
+            return { success: false };
         }
     }
 
@@ -222,13 +306,29 @@ class MiniApp {
     }
 }
 
-// ==================== INITIALIZE APP ====================
-let app;
 
-// Wait for all scripts and DOM to load
-window.addEventListener('load', () => {
-    app = new MiniApp();
-    window.miniApp = app; // Make globally accessible for debugging
+
+
+// ==================== INITIALIZE APP ====================
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Инициализация Mini App
+    const app = new MiniApp();
+    
+    // 2. Загрузка начальных данных с сервера
+    const initialStatuses = await app.loadInitialData();
+    
+    if (initialStatuses) {
+         // 3. Инициализация квестов с учетом серверных статусов
+        const ALL_QUESTS_DATA = initQuests(initialStatuses, app);
+        
+        // 4. Рендеринг квестов и установка обработчиков
+        renderQuests(ALL_QUESTS_DATA);
+        setupQuestHandlers(app, ALL_QUESTS_DATA); // Передаем обновленные данные
+    }
+
+    app.updateUI(); 
+    app.tg.ready();
 });
 
 // === УВЕДОМЛЕНИЕ (Toast Notification) ===

@@ -438,7 +438,95 @@ class StatisticsDBManager:
             self.pool = None
         self.daily_stats = None
 
+# ------------------ НОВЫЙ КЛАСС: QuestStatusDBManager ------------------
+class QuestStatusDBManager:
+    def __init__(self, db_url: str, pool: asyncpg.pool.Pool | None = None):
+        self.db_url = db_url
+        self.pool = pool
 
+    async def create_quest_statuses_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS user_quest_statuses (
+            id BIGSERIAL PRIMARY KEY,
+            telegram_id BIGINT REFERENCES tg_users(telegram_id) ON DELETE CASCADE,
+            quest_id TEXT NOT NULL,
+            status TEXT NOT NULL, -- 'visited', 'completed', 'unclaimed'
+            updated_at TIMESTAMPTZ DEFAULT now(),
+            UNIQUE (telegram_id, quest_id)
+        );
+        -- Индекс для быстрого поиска по пользователю
+        CREATE INDEX IF NOT EXISTS idx_user_quest_status ON user_quest_statuses (telegram_id, status);
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(query)
+
+    async def set_quest_status(self, telegram_id: int, quest_id: str, status: str):
+        """
+        Устанавливает или обновляет статус квеста ('visited', 'completed', 'unclaimed').
+        """
+        query = """
+        INSERT INTO user_quest_statuses (telegram_id, quest_id, status)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (telegram_id, quest_id) DO UPDATE
+        SET status = EXCLUDED.status, updated_at = now();
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(query, telegram_id, quest_id, status)
+
+    async def get_user_quest_statuses(self, telegram_id: int) -> list[dict]:
+        """
+        Возвращает список словарей со статусами всех квестов пользователя.
+        """
+        query = "SELECT quest_id, status FROM user_quest_statuses WHERE telegram_id = $1;"
+        async with self.pool.acquire() as conn:
+            records = await conn.fetch(query, telegram_id)
+            return [dict(r) for r in records]
+        
+# db.py, после MailingDBManager или QuestStatusDBManager
+
+# ------------------ НОВЫЙ КЛАСС: CountersDBManager ------------------
+class CountersDBManager:
+    def __init__(self, db_url: str, pool: asyncpg.pool.Pool | None = None):
+        self.db_url = db_url
+        self.pool = pool
+
+    async def create_user_counters_table(self):
+        query = """
+        CREATE TABLE IF NOT EXISTS user_counters (
+            id BIGSERIAL PRIMARY KEY,
+            telegram_id BIGINT REFERENCES tg_users(telegram_id) ON DELETE CASCADE,
+            counter_key TEXT NOT NULL, -- например, 'videos_watched', 'clicks_today'
+            value INTEGER DEFAULT 0,
+            updated_at TIMESTAMPTZ DEFAULT now(),
+            UNIQUE (telegram_id, counter_key)
+        );
+        CREATE INDEX IF NOT EXISTS idx_user_counter ON user_counters (telegram_id);
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(query)
+
+    async def increment_counter(self, telegram_id: int, counter_key: str, increment: int = 1) -> int:
+        """
+        Атомарно увеличивает счетчик и возвращает новое значение.
+        """
+        query = """
+        INSERT INTO user_counters (telegram_id, counter_key, value)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (telegram_id, counter_key) DO UPDATE
+        SET value = user_counters.value + $3, updated_at = now()
+        RETURNING value;
+        """
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(query, telegram_id, counter_key, increment)
+
+    async def get_counter(self, telegram_id: int, counter_key: str) -> int:
+        """
+        Возвращает текущее значение счетчика.
+        """
+        query = "SELECT value FROM user_counters WHERE telegram_id = $1 AND counter_key = $2;"
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(query, telegram_id, counter_key) or 0
+# ------------------ CountersDBManager КОНЕЦ ------------------
 
 # ------------------ DATABASE MANAGER ------------------
 class DatabaseManager:
@@ -450,6 +538,8 @@ class DatabaseManager:
         self.mailing_db: MailingDBManager | None = None
         self.settings_db: SettingsDBManager | None = None
         self.stats_db_manager: StatisticsDBManager | None = None
+        self.quests_db: QuestStatusDBManager | None = None
+        self.counters_db: CountersDBManager | None = None
 
     async def connect(self):
         if not self.pool:
@@ -464,6 +554,10 @@ class DatabaseManager:
             self.settings_db = SettingsDBManager(self.db_url, pool=self.pool)
         if not self.stats_db_manager:
             self.stats_db_manager = StatisticsDBManager(self.db_url, pool=self.pool)
+        if not self.quests_db:
+            self.quests_db = QuestStatusDBManager(self.db_url, pool=self.pool)
+        if not self.counters_db:
+            self.counters_db = CountersDBManager(self.db_url, pool=self.pool)
 
     async def setup(self):
         await self.connect()
@@ -472,6 +566,8 @@ class DatabaseManager:
         await self.mailing_db.create_mailing_table()
         await self.settings_db.create_settings_table()
         await self.stats_db_manager.create_stats_table()
+        await self.quests_db.create_quest_statuses_table()
+        await self.counters_db.create_user_counters_table()
 
     async def create_quest_statuses_table(self):
         query = """

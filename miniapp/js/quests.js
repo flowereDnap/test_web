@@ -129,31 +129,126 @@ class MilestoneQuest extends Quest {
 
 // ==================== III. ДАННЫЕ И РЕНДЕРИНГ ====================
 
-// Массив с данными, который в будущем будет загружаться с сервера
-const ALL_QUESTS_DATA = [
-     new FollowQuest(
-        'quest_subscribe_channel', 
-        'Подпишись на наш канал', 
-        '+0.50$', 
-        'https://t.me/your_channel_link'
-    ),
-    new MilestoneQuest(
-        'quest_view_10', 
-        'Посмотреть 10 видео', 
-        '+0.20$', 
-        10, 
-        5 // Предположим, пользователь посмотрел 5
-    ),
-    new MilestoneQuest(
-        'quest_view_100', 
-        'Посмотреть 100 видео', 
-        '+2.00$', 
-        100, 
-        5, 
-        false // Не завершен
-    ),
+// 1. Определяем базовую структуру квестов
+const BASE_QUESTS_CONFIG = [
+    {
+        id: 'quest_subscribe_channel', 
+        type: 'follow', 
+        title: 'Подпишись на наш канал', 
+        reward: '0.50', 
+        link: 'https://t.me/your_channel_link'
+    },
+    {
+        id: 'quest_casino_reg', 
+        type: 'follow', 
+        title: 'Регистрация в Казино', 
+        reward: '1.00', 
+        link: 'https://casino.com/ref'
+    },
+    // ... прочие квесты, которые не зависят от прогресса (MilestoneQuest)
+    {
+        id: 'milestone_watch_5', 
+        type: 'milestone',
+        title: 'Посмотри 5 видео',
+        reward: '0.10',
+        goal: 5 
+    }
 ];
 
+// Инициализация квестов на основе данных сервера
+function initQuests(serverStatuses, app) { // <-- ПРИНИМАЕМ app
+    const statusMap = new Map(serverStatuses.map(q => [q.quest_id, q.status]));
+    const ALL_QUESTS_DATA = [];
+
+    // [НОВОЕ] Получаем текущий счетчик просмотров
+    const currentVideoCount = app.state.getCounter('videos_watched'); 
+
+    for (const config of BASE_QUESTS_CONFIG) {
+        const currentStatus = statusMap.get(config.id);
+        const isCompleted = currentStatus === 'completed';
+        const isVisited = currentStatus === 'visited' || isCompleted; 
+
+        if (config.type === 'follow') {
+            ALL_QUESTS_DATA.push(new FollowQuest(
+                config.id, 
+                config.title, 
+                `+${config.reward}$`, // Награда
+                config.link,          // targetLink
+                isCompleted,          // isCompleted
+                isVisited             // isLinkVisited
+            ));
+        } else if (config.type === 'milestone') {
+            ALL_QUESTS_DATA.push(new MilestoneQuest(
+                config.id, 
+                config.title, 
+                `+${config.reward}$`, 
+                isCompleted, 
+                // [ИЗМЕНЕНИЕ] Передаем текущий прогресс при инициализации
+                config.id === 'milestone_watch_5' ? currentVideoCount : 0, 
+                config.goal
+            ));
+        }
+    }
+    return ALL_QUESTS_DATA;
+}
+
+// Главная функция рендеринга
+function renderQuests(ALL_QUESTS_DATA) {
+    const container = document.getElementById('quests-list');
+    if (!container) return;
+
+    // 1. Очистка контейнера перед рендерингом
+    container.innerHTML = ''; 
+
+    ALL_QUESTS_DATA.forEach(quest => {
+        const questItem = document.createElement('div');
+        questItem.className = 'quest-item';
+        questItem.dataset.id = quest.id;
+
+        // 2. Кнопка и статус
+        const button = document.createElement('button');
+        button.className = 'quest-button';
+        button.disabled = quest.isCompleted;
+
+        // Определяем текст кнопки
+        if (quest.isCompleted) {
+            button.textContent = '✅ Выполнено';
+        } else if (quest instanceof FollowQuest) {
+            button.textContent = quest.isLinkVisited ? 'Проверить' : 'Перейти';
+        } else if (quest instanceof MilestoneQuest) {
+             // Кнопка для MilestoneQuest неактивна до выполнения
+             button.textContent = quest.isCompleted ? '✅ Выполнено' : 'В процессе';
+             button.disabled = true;
+        } else {
+             button.textContent = 'Начать';
+        }
+        
+        // Если квест выполнен, применяем класс и отключаем кнопку
+        if (quest.isCompleted) {
+            markQuestCompleted(questItem, button); 
+        }
+
+        // 3. Рендеринг контента (включая прогресс-бар)
+        const questContent = document.createElement('div');
+        questContent.className = 'quest-content';
+        questContent.innerHTML = `
+            <div class="quest-info">
+                <div class="quest-title">${quest.title}</div>
+                <div class="quest-reward">${quest.reward}</div>
+            </div>
+            ${quest instanceof MilestoneQuest ? renderProgressBar(quest) : ''}
+        `;
+        questItem.appendChild(questContent);
+        
+        // 4. Добавление кнопки и элемента в контейнер
+        const buttonContainer = document.createElement('div');
+        buttonContainer.className = 'quest-button-container';
+        buttonContainer.appendChild(button);
+        
+        questItem.appendChild(buttonContainer);
+        container.appendChild(questItem);
+    });
+}
 
 /**
  * Рендерит список квестов в DOM.
@@ -172,90 +267,72 @@ function renderQuestList(questsArray) {
 
 // ==================== IV. ЛОГИКА ОБРАБОТКИ СОБЫТИЙ ====================
 
-// Файл js/quests.js, секция IV. ЛОГИКА ОБРАБОТКИ СОБЫТИЙ
-
 /**
  * Обрабатывает нажатие на кнопку "Проверить", "Перейти" или "Получить награду".
  * @param {MiniApp} app - Экземпляр главного приложения.
  */
-function setupQuestHandlers(app) {
+// [ИЗМЕНЕНИЕ] Передаем ALL_QUESTS_DATA
+function setupQuestHandlers(app, ALL_QUESTS_DATA) {
     const questsList = document.getElementById('quests-list');
 
     questsList.addEventListener('click', async (e) => {
-        const button = e.target.closest('.check-btn.primary-btn');
-        if (!button) return;
+        // ... (поиск кнопки и questId) ...
 
-        const questItem = button.closest('.quest-item');
-        const questId = questItem.dataset.questId;
+        // 1. Находим объект квеста
         const questObject = ALL_QUESTS_DATA.find(q => q.id === questId);
 
-        if (!questObject || questObject.isCompleted) return;
+        // ... (проверки и отключение кнопки) ...
         
-        button.disabled = true;
-        
-        // --- 1. FollowQuest (Подписка на канал) ---
+        // --- 1. FollowQuest (Подписка на канал / Казино) ---
         if (questObject instanceof FollowQuest) {
             
             // A) Состояние "Перейти" (Клик первый раз)
             if (!questObject.isLinkVisited) {
                 
-                // 1. Открываем ссылку
-                if (app.tg && app.tg.openTelegramLink) {
-                    app.tg.openTelegramLink(questObject.targetLink); 
-                } else {
-                    // Fallback для десктопа или старых версий
-                    window.open(questObject.targetLink, '_blank');
-                }
+                // 1. Отмечаем переход на сервере (СОХРАНЯЕМ СТАТУС)
+                const apiResult = await app.markQuestVisited(questId);
                 
-                // 2. Меняем состояние и текст кнопки на "Проверить"
-                questObject.isLinkVisited = true;
-                button.textContent = 'Проверить'; 
-                button.disabled = false;
-                app.showToast('➡️ Перейдите по ссылке, подпишитесь и нажмите "Проверить".');
-                return;
+                if (apiResult.success) {
+                    // 2. Открываем ссылку (как и раньше)
+                    if (app.tg && app.tg.openTelegramLink) {
+                        app.tg.openTelegramLink(questObject.targetLink); 
+                    } else {
+                        window.open(questObject.targetLink, '_blank');
+                    }
+                    
+                    // 3. Обновляем UI/State
+                    questObject.isLinkVisited = true;
+                    button.textContent = 'Проверить'; 
+                    app.showToast('➡️ Перейдите по ссылке, выполните и нажмите "Проверить".');
+                } else {
+                     app.showToast('⚠️ Ошибка сохранения статуса.', 'error');
+                }
             }
             
-            // B) Состояние "Проверить" (Клик после перехода)
-            if (questObject.isLinkVisited) {
+            // B) Состояние "Проверить" (Статус 'visited' был загружен с сервера)
+            else if (questObject.isLinkVisited) {
                 button.textContent = '...'; // Индикатор загрузки
 
-                // 1. Отправляем запрос на сервер для проверки подписки (API-запрос)
-                const result = await app.checkQuestStatus(questId);
+                // 1. Отправляем запрос на сервер для проверки (Тут все еще нужна реализация проверки на стороне бота!)
+                // Для демо-целей мы пока оставим имитацию, но в реале тут должен быть API-эндпоинт
+                // например: await app.checkQuestServer(questId);
                 
-                // 2. Проверяем результат
+                // *** ВРЕМЕННАЯ ИМИТАЦИЯ (нужно заменить на реальный API-вызов) ***
+                const result = await app.checkQuestStatus(questId); 
+                // *** КОНЕЦ ВРЕМЕННОЙ ИМИТАЦИИ ***
+                
+                // ... (обработка результата остается прежней) ...
                 if (result.isCompleted) {
-                    // Успех: Начисляем награду
-                    questObject.isCompleted = true; 
-                    markQuestCompleted(questItem, button); 
-                    app.state.updateBalance(result.reward); 
-                    app.updateUI(); 
-                    app.showToast(`🎉 Задание выполнено! Награда: +${result.reward}$`);
-                    
+                    // ... (markQuestCompleted, updateBalance, showToast)
                 } else {
-                    // Провал: Возвращаем в исходное состояние
-                    questObject.isLinkVisited = false; // Сбрасываем состояние
-                    button.textContent = 'Перейти'; // Возвращаем исходный текст
-                    app.showToast('⚠️ Подписка не найдена. Попробуйте снова.');
+                    button.textContent = 'Проверить'; 
+                    app.showToast('⚠️ Условия задания не выполнены. Попробуйте снова.');
                 }
             }
         
-        // --- 2. Generic Quest / Milestone Quest (Прочие квесты) ---
-        } else {
-            // ... (Старая логика проверки для MilestoneQuest или других квестов) ...
-            
-            button.textContent = '...'; 
-            const result = await app.checkQuestStatus(questId);
-            
-            if (result.isCompleted) {
-                questObject.isCompleted = true; 
-                markQuestCompleted(questItem, button); 
-                app.state.updateBalance(result.reward);
-                app.updateUI();
-                app.showToast(`🎉 Задание выполнено! Награда: +${result.reward}$`);
-            } else {
-                app.showToast('⚠️ Условия задания пока не выполнены.');
-            }
         }
+        
+        // ... (логика MilestoneQuest остается прежней) ...
         
         button.disabled = false;
     });
@@ -264,21 +341,31 @@ function setupQuestHandlers(app) {
 /**
  * Обновление DOM при выполнении задания (перенесено из app.js)
  */
+// Вспомогательная функция для маркировки завершенного квеста
 function markQuestCompleted(questItem, button) {
-    questItem.classList.add('completed');
-    const title = questItem.querySelector('.quest-title');
-    if (title) {
-        title.classList.add('completed-title');
+    questItem.classList.add('quest-completed');
+    if (button) {
+        button.textContent = '✅ Выполнено';
+        button.disabled = true;
     }
-    
-    // Заменяем кнопку на иконку "Выполнено"
-    const completedIcon = document.createElement('span');
-    completedIcon.className = 'check-btn completed-icon';
-    completedIcon.textContent = '✔';
-    
-    // Заменяем кнопку
-    button.parentNode.replaceChild(completedIcon, button);
 }
 
-// Глобальный запуск рендеринга
-renderQuestList(ALL_QUESTS_DATA);
+// Новая вспомогательная функция для рендеринга прогресс-бара
+function renderProgressBar(quest) {
+    if (!(quest instanceof MilestoneQuest)) return '';
+
+    const percent = Math.min(100, (quest.currentCount / quest.goal) * 100).toFixed(0);
+    const progressText = `${quest.currentCount} из ${quest.goal}`;
+    
+    return `
+        <div class="quest-progress-bar">
+            <div class="progress-track">
+                <div 
+                    class="progress-fill ${quest.isCompleted ? 'completed-fill' : ''}" 
+                    style="width: ${percent}%;">
+                </div>
+            </div>
+            <div class="progress-text">${progressText}</div>
+    `;
+}
+

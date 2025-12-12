@@ -5,6 +5,7 @@ class AppState {
         this.todayCount = parseInt(localStorage.getItem('todayCount') || '1');
         this.totalEarned = parseFloat(localStorage.getItem('totalEarned') || '145.20');
         this.maxCount = parseInt(localStorage.getItem('maxCount') || '10');
+        this.counters = {};
     }
 
     updateBalance(amount) {
@@ -12,6 +13,14 @@ class AppState {
         this.todayCount += 1;
         this.totalEarned += amount;
         this.save();
+    }
+
+    setCounters(counters) {
+        this.counters = counters; // Сохраняем все счетчики
+    }
+    
+    getCounter(key) {
+        return this.counters[key] || 0;
     }
 
     save() {
