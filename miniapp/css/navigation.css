@@ -1,36 +1,49 @@
-/* ==================== BOTTOM NAVIGATION ==================== */
+/* ==================== BOTTOM NAVIGATION (BLURRED & COMPACT) ==================== */
 .bottom-nav {
+    /* 1. Позиционирование: центрирование и отступ снизу */
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 10px; /* Отступ от самого низа */
+    left: 50%;
+    transform: translateX(-50%); /* Центрирование по горизонтали */
+    
+    /* 2. Размер: Компактная ширина */
+    width: 95%; /* Не на всю ширину, чтобы края были видны */
+    max-width: 400px; /* Ограничиваем максимальную ширину */
+
+    /* 3. Визуальные эффекты: Блюр и прозрачность */
+    /* Замена var(--bg-2) на полупрозрачный фон */
+    background-color: rgba(0, 0, 0, 0.5); /* Темный полупрозрачный фон */
+    backdrop-filter: blur(10px); /* Эффект размытия */
+    -webkit-backdrop-filter: blur(10px); /* Для Safari/iOS */
+    
+    /* 4. Форма: Закругленные края */
+    border-radius: 20px; 
+    
+    /* Контур и тень (замена border-top) */
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+
+    /* Флекс-контейнер и внутренние отступы */
     display: flex;
     justify-content: space-around;
-    
-    /* ИЗМЕНЕНО: Уменьшаем вертикальный padding вдвое (с var(--spacing-md) до var(--spacing-sm)) */
     padding: var(--spacing-sm) 0; 
-    /* Сохраняем безопасную зону */
-    padding-bottom: calc(var(--spacing-sm) + max(0px, env(safe-area-inset-bottom))); 
-    
-    background: var(--bg-2);
-    border-top: 1px solid var(--border-color);
     z-index: 1000;
 }
+
+/* 5. Обновление стиля кнопки (.nav-btn) */
 .nav-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: var(--spacing-xs);
     
-    /* ИЗМЕНЕНО: Убираем горизонтальный padding полностью */
-    padding: var(--spacing-sm) 0; 
+    padding: 0; /* Убираем лишний padding */
     
     background: none;
     border: none;
     cursor: pointer;
-    color: var(--text-secondary);
+    color: rgba(255, 255, 255, 0.7); /* Цвет неактивных иконок и текста */
     transition: all var(--transition-fast);
-    border-radius: var(--radius-md);
     min-width: 70px; 
     -webkit-tap-highlight-color: transparent;
     position: relative;
@@ -41,36 +54,37 @@
     transform: scale(0.95);
 }
 
+/* Активный стиль: фокусируемся на цвете */
 .nav-btn.active {
     color: var(--primary-color);
-    
-    /* ИСПОЛЬЗОВАНО: Замена color-mix на rgba для лучшей совместимости/прозрачности */
-    background: rgba(212, 175, 55, 0.1); 
-    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.15);
+    /* Убираем фон и тень, которые были в старом дизайне */
+    background: none; 
+    box-shadow: none;
 }
 
+/* Активный индикатор */
 .nav-btn.active::before {
     content: '';
     position: absolute;
-    top: 0; /* Привязываем к верху кнопки */
+    top: 0; 
     left: 50%;
     transform: translateX(-50%);
-    width: 30px; /* Чуть тоньше */
-    height: 2px;
+    width: 20px; /* Ширина индикатора */
+    height: 3px; 
     background: var(--primary-color);
-    border-radius: 0 0 2px 2px;
+    border-radius: 1.5px;
 }
 
 .nav-icon {
-    font-size: 22px; /* Чуть меньше */
+    font-size: 22px; 
     transition: transform var(--transition-fast);
 }
 
 .nav-btn.active .nav-icon {
-    transform: scale(1.05); /* Меньше анимация */
+    transform: scale(1.05);
 }
 
 .nav-label {
-    font-size: var(--font-size-xs); /* Чуть меньше шрифт для метки */
-    font-weight: var(--font-weight-medium); /* ИСПОЛЬЗОВАНО: переменная */
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-medium);
 }

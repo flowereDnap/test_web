@@ -450,7 +450,7 @@ class QuestStatusDBManager:
             id BIGSERIAL PRIMARY KEY,
             telegram_id BIGINT REFERENCES tg_users(telegram_id) ON DELETE CASCADE,
             quest_id TEXT NOT NULL,
-            status TEXT NOT NULL, -- 'visited', 'completed', 'unclaimed'
+            status TEXT NOT NULL, -- 'initial', 'visited', 'ready_to_claim', 'completed'
             updated_at TIMESTAMPTZ DEFAULT now(),
             UNIQUE (telegram_id, quest_id)
         );
@@ -462,7 +462,7 @@ class QuestStatusDBManager:
 
     async def set_quest_status(self, telegram_id: int, quest_id: str, status: str):
         """
-        Устанавливает или обновляет статус квеста ('visited', 'completed', 'unclaimed').
+        Устанавливает или обновляет статус квеста ('visited', 'completed','ready_to_claim', 'initial').
         """
         query = """
         INSERT INTO user_quest_statuses (telegram_id, quest_id, status)

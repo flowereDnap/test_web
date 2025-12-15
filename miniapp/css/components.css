@@ -1,13 +1,11 @@
 /* ==================== CARD COMPONENTS ==================== */
 .card {
-    /* ИЗМЕНЕНО: Используем семантически точную переменную для фона контейнера */
     background: var(--bg-container); 
     padding: var(--spacing-lg);
     border-radius: var(--radius-md);
-    border: 1px solid var(--border-color); /* Добавим легкую обводку для отделения */
+    border: 1px solid var(--border-color); 
     margin-bottom: var(--spacing-md);
     transition: transform var(--transition-fast);
-    /* Добавим легкую тень для глубины (опционально) */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); 
 }
 
@@ -16,7 +14,6 @@
 }
 
 .card-title {
-    /* ИСПОЛЬЗУЕМ: font-weight-bold (700) вместо 600 для консистентности */
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold); 
     margin-bottom: var(--spacing-sm);
@@ -33,7 +30,6 @@
 
 /* Универсальный стиль для всех кнопок */
 .btn, .primary-btn, .secondary-btn, .stat-action-btn { 
-    /* ВАЖНО: Применяем универсальные стили к кнопкам, которые мы заменили в HTML */
     height: var(--btn-height);
     padding: 0 var(--spacing-lg);
     border-radius: var(--radius-sm);
@@ -47,19 +43,21 @@
     justify-content: center;
     transition: all var(--transition-fast);
     outline: none;
-    /* Сброс стандартных стилей браузера */
     -webkit-tap-highlight-color: transparent; 
 }
 
 /* Стиль для первичных (акцентных) кнопок */
 .btn.primary, .primary-btn {
     background: var(--primary-color);
-    color: var(--bg-page); /* Текст должен быть темным на золотом фоне */
+    color: var(--bg-page); 
     border: none;
     box-shadow: 0 4px 10px rgba(212, 175, 55, 0.4);
 }
 .btn.primary:active, .primary-btn:active {
-    background: darken(var(--primary-color), 10%);
+    /* ПРИМЕЧАНИЕ: darken() не работает в чистом CSS. 
+       Если вы используете препроцессор (Sass/Less), это ок. 
+       Если чистый CSS, замените на конкретный цвет, например: */
+    background: #c0a84d; /* Чуть темнее золотой */
     transform: scale(0.98);
 }
 
@@ -117,32 +115,17 @@
     border-radius: 4px;
 }
 
-/* ==================== SCROLL UTILITY ==================== */
+/* ==================== SCROLL UTILITY (УДАЛЕНО) ==================== */
 
-.scrollable-area {
-    overflow-y: auto;
-    width: 100%;
-    /* Настраиваем стиль скроллбара для WebKit */
-    -webkit-overflow-scrolling: touch; 
-}
-
-.scrollable-area::-webkit-scrollbar {
-    width: 4px;
-    height: 4px;
-}
-
-.scrollable-area::-webkit-scrollbar-thumb {
-    background-color: var(--text-secondary);
-    border-radius: 2px;
-}
-
-.scrollable-area::-webkit-scrollbar-track {
-    background-color: var(--bg-container);
-}
+/*
+   ПРЕДУПРЕЖДЕНИЕ: Класс .scrollable-area больше не используется для прокрутки 
+   всей страницы. Прокрутку теперь контролирует <body>. 
+   Если вам нужен скролл в конкретном внутреннем блоке (например, в модальном окне), 
+   вам нужно переопределить этот класс только для этого блока.
+*/
 
 
 /* ==================== OVERLAYS & POPUPS ==================== */
-/* Video & Reward overlays inherit colors from cash.css (или используем общие переменные) */
 
 .modal-overlay,
 .video-overlay { 
@@ -151,7 +134,7 @@
     left: 0;
     width: 100%;
     height: 100%;
-    background: var(--overlay-bg); /* Используем общую переменную */
+    background: var(--overlay-bg); 
     display: flex;
     justify-content: center;
     align-items: center;
@@ -167,7 +150,6 @@
     visibility: visible;
 }
 
-/* Стили для оверлеев/попапов, которые вы предоставили */
 .video-progress-bar { 
     background: var(--accent-color); 
 }
@@ -191,7 +173,7 @@
 .reward-popup.active {
     opacity: 1;
     visibility: visible;
-    transform: translate(-50%, 0); /* Сдвиг при появлении */
+    transform: translate(-50%, 0); 
 }
 
 .reward-emoji {
@@ -205,7 +187,7 @@
     font-weight: var(--font-weight-medium);
 }
 .reward-amount { 
-    color: var(--primary-color); /* Акцентный цвет для суммы */
+    color: var(--primary-color); 
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
 }

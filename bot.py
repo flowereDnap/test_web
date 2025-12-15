@@ -145,6 +145,47 @@ FOLLOW_QUESTS = {
     },
 }
 
+
+# 1. Используем QUEST_CONFIG, который вы определили:
+QUEST_CONFIG_2 = {
+    'quest_subscribe_channel': {
+        'title': 'Подпишись на наш канал', # [НОВОЕ] Добавьте title, его не было в вашем примере
+        'link': 'https://t.me/bebes1114',
+        'channel_username': '@bebes1114',
+        'reward': 0.50,
+        'type': 'follow'
+    },
+    'milestone_watch_5': {
+        'title': 'Посмотри 5 видео', # [НОВОЕ] Добавьте title
+        'reward': 0.75,
+        'goal': 5,
+        'type': 'milestone'
+    },
+    # Добавьте другие квесты, например:
+    'quest_casino_reg': {
+        'title': 'Регистрация в Казино',
+        'link': 'https://casino.com/ref',
+        'channel_username': '@casino_channel', 
+        'reward': 1.00,
+        'type': 'follow'
+    },
+}
+
+async def get_quest_config_list(request: web.Request):
+    """
+    GET /api/quest/get_list
+    Возвращает полный список конфигураций квестов.
+    """
+    quest_list = []
+    for quest_id, config in QUEST_CONFIG_2.items():
+        # Копируем конфигурацию
+        item = config.copy()
+        # Добавляем ID в объект
+        item['id'] = quest_id
+        quest_list.append(item)
+        
+    return web.json_response(quest_list)
+
 def get_quest_config(quest_id: str) -> dict | None:
     return QUEST_CONFIG.get(quest_id)
 
@@ -277,7 +318,8 @@ async def check_follow_quest_status_handler(request: web.Request):
             "reward": reward
         })
     else:
-        await db_manager.quests_db.set_quest_status(telegram_id, quest_id, '')
+        await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'initial')      
+        return web.json_response({"status": "ok", "isCompleted": False})
     
     # Если статус не 'visited' или внешняя проверка не прошла
     return web.json_response({"status": "ok", "isCompleted": False}) # isCompleted: false соответствует quests.js
@@ -1084,6 +1126,7 @@ async def start_app():
     app.router.add_post('/api/quest/visited', mark_quest_visited)
     app.router.add_post('/api/quest/check', check_follow_quest_status_handler) # Для FollowQuest
     app.router.add_post('/api/quest/complete', complete_quest_handler)
+    app.router.add_get('api/quest/get_list', get_quest_config_list)
 
     app.router.add_post(f"{WEBHOOK_PATH}/{{secret}}", handle_webhook)
 

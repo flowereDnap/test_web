@@ -215,39 +215,28 @@ class MilestoneQuest extends Quest {
 
 // ==================== III. ДАННЫЕ И РЕНДЕРИНГ ====================
 
-// 1. Определяем базовую структуру квестов
-const BASE_QUESTS_CONFIG = [
-    {
-        id: 'quest_subscribe_channel', 
-        type: 'follow', 
-        title: 'Подпишись на наш канал', 
-        reward: '0.50', 
-        link: 'https://t.me/bebes1114'
-    },
-    {
-        id: 'quest_casino_reg', 
-        type: 'follow', 
-        title: 'Регистрация в Казино', 
-        reward: '1.00', 
-        link: 'https://casino.com/ref'
-    },
-    // ... прочие квесты, которые не зависят от прогресса (MilestoneQuest)
-    {
-        id: 'milestone_watch_5', 
-        type: 'milestone',
-        title: 'Посмотри 5 видео',
-        reward: '0.10',
-        goal: 5 
-    }
-];
+
 
 // Инициализация квестов на основе данных сервера
-function initQuests(serverStatuses, app) { // <-- ПРИНИМАЕМ app
+async function initQuests(serverStatuses, app) { // <-- ПРИНИМАЕМ app
     const statusMap = new Map(serverStatuses.map(q => [q.quest_id, q.status]));
     const ALL_QUESTS_DATA = [];
 
     // [НОВОЕ] Получаем текущий счетчик просмотровнам
     const currentVideoCount = app.state.getCounter('videos_watched'); 
+
+    let BASE_QUESTS_CONFIG = [];
+    try {
+        const response = await fetch('/api/quest/get_list');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch quest config: ${response.status}`);
+        }
+        BASE_QUESTS_CONFIG = await response.json();
+    } catch (e) {
+        console.error("Error loading quest configuration:", e);
+        app.showToast('⚠️ Ошибка загрузки списка заданий.', 'error');
+        return ALL_QUESTS_DATA;
+    }
 
     for (const config of BASE_QUESTS_CONFIG) {
         const currentStatus = statusMap.get(config.id);
@@ -269,7 +258,6 @@ function initQuests(serverStatuses, app) { // <-- ПРИНИМАЕМ app
                 config.title, 
                 `+${config.reward}$`, 
                 isCompleted, 
-                // [ИЗМЕНЕНИЕ] Передаем текущий прогресс при инициализации
                 config.id === 'milestone_watch_5' ? currentVideoCount : 0, 
                 config.goal
             ));
@@ -483,10 +471,13 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
             // 4. Показываем сообщение
             app.showToast(`🎉 Квест "${questObject.title}" выполнен! Получено ${questObject.reward}.`, 'success');
 
-        } else if (questObject.isLinkVisited) {
-            // Если FollowQuest проверялся, но не выполнен
-            button.textContent = 'Проверить'; 
+        } else if (questObject instanceof FollowQuest && questObject.isLinkVisited) {
+
+            questObject.isLinkVisited = false;
+            
+            button.textContent = 'Перейти';
             app.showToast('⚠️ Условия задания не выполнены. Попробуйте снова.', 'error');
+            
         } else if (questObject instanceof MilestoneQuest) {
              // Если MilestoneQuest проверялся, но сервер отказал
             button.textContent = 'Получить награду';
