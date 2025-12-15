@@ -282,21 +282,63 @@ class MiniApp {
         }, 2000);
     }
 
-    async checkQuestStatus(questId) {
-        // В реальном приложении: отправка запроса на ваш сервер
-        console.log(`[API] Checking quest ${questId} status...`);
-        
-        // Имитация задержки и ответа сервера
-        await new Promise(resolve => setTimeout(resolve, 1500)); 
-        
-        // Здесь ваш сервер должен вернуть, завершен квест или нет.
-        // Примеры:
-        if (questId === 'quest_casino_reg' && Math.random() < 0.3) {
-            return { isCompleted: true, reward: 1.00 }; // 30% шанс выполнения для имитации
-        }
-        
+    // app.js или App-подобный класс
+
+async checkQuestStatus(questId) {
+    // 1. Получаем необходимый telegram_id
+    const user = window.Telegram.WebApp.initDataUnsafe.user;
+    if (!user || !user.id) {
+        console.error("Telegram User ID not found.");
+        window.Telegram.WebApp.showAlert('Ошибка: Не удалось получить ID пользователя.');
         return { isCompleted: false, reward: 0 };
     }
+    const telegramId = user.id;
+
+    console.log(`[API] Checking quest ${questId} status for user ${telegramId}...`);
+    
+    try {
+        // 2. Формируем URL и тело запроса
+        const url = `/api/quest/check`;
+        const response = await fetch(url, {
+            method: 'POST', // Используем POST, как мы настроили в bot.py
+            headers: {
+                'Content-Type': 'application/json',
+                // Для безопасности можно добавить токен или initData, но пока используем базовый POST
+            },
+            body: JSON.stringify({
+                quest_id: questId,
+                telegram_id: telegramId
+            })
+        });
+
+        // 3. Проверяем HTTP-статус ответа
+        if (!response.ok) {
+            console.error(`HTTP error! Status: ${response.status}`);
+            window.Telegram.WebApp.showAlert(`Ошибка сервера: ${response.status}`);
+            return { isCompleted: false, reward: 0 };
+        }
+
+        // 4. Парсим JSON-ответ от сервера
+        const result = await response.json();
+
+        // 5. Обрабатываем ответ (сервер должен вернуть { isCompleted: bool, reward: number })
+        if (result.status === 'error') {
+            console.error(`Server logic error: ${result.error}`);
+            window.Telegram.WebApp.showAlert(`Ошибка логики: ${result.error}`);
+            return { isCompleted: false, reward: 0 };
+        }
+        
+        return { 
+            isCompleted: result.isCompleted || false, 
+            reward: result.reward || 0 
+        };
+
+    } catch (error) {
+        console.error("[API Error] Failed to check quest status:", error);
+        window.Telegram.WebApp.showAlert('Ошибка подключения: Не удалось проверить статус квеста.');
+        return { isCompleted: false, reward: 0 };
+    }
+}
 }
 
 

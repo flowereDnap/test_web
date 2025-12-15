@@ -222,7 +222,7 @@ const BASE_QUESTS_CONFIG = [
         type: 'follow', 
         title: 'Подпишись на наш канал', 
         reward: '0.50', 
-        link: 'https://t.me/your_channel_link'
+        link: 'https://t.me/bebes1114'
     },
     {
         id: 'quest_casino_reg', 
@@ -246,7 +246,7 @@ function initQuests(serverStatuses, app) { // <-- ПРИНИМАЕМ app
     const statusMap = new Map(serverStatuses.map(q => [q.quest_id, q.status]));
     const ALL_QUESTS_DATA = [];
 
-    // [НОВОЕ] Получаем текущий счетчик просмотров
+    // [НОВОЕ] Получаем текущий счетчик просмотровнам
     const currentVideoCount = app.state.getCounter('videos_watched'); 
 
     for (const config of BASE_QUESTS_CONFIG) {
@@ -469,7 +469,7 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
             
             // 2. Обновляем UI
             // Используем вспомогательную функцию для обновления DOM
-            app.markQuestCompleted(questItem, button); // Предполагаем, что этот метод существует в MiniApp/quests.js
+            markQuestCompleted(questItem, button); // Предполагаем, что этот метод существует в MiniApp/quests.js
             
             // 3. Обновляем баланс
             if (apiResult.reward) {
