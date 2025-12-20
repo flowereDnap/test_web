@@ -7,7 +7,7 @@ const CONFIG = {
     rewardAmount: 0.05,
     videoDuration: 30, // seconds
     videoRequiredWatchPercentage: 5,
-    backendUrl: window.location.origin,
+    backendUrl: 'https://adds-bot.cloud-ip.cc',
     hapticFeedback: true
      // Must watch 95% to get reward
 };

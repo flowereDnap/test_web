@@ -245,8 +245,15 @@ class MiniApp {
         const helpChatBtn = document.querySelector('.help-chat-btn');
         if (helpChatBtn) {
             helpChatBtn.addEventListener('click', () => {
-                console.log('Кнопка "Чат поддержки" нажата. Имитация перехода.');
-                // window.open('https://t.me/your_support_chat', '_blank'); 
+                const botUrl = 'https://t.me/adds_FAQ_bot';
+                
+                // Используем безопасный метод Telegram для открытия ссылок
+                if (window.Telegram && window.Telegram.WebApp) {
+                    window.Telegram.WebApp.openTelegramLink(botUrl);
+                } else {
+                    // Если открыто просто в браузере
+                    window.open(botUrl, '_blank');
+                }
             });
         }
     }
@@ -355,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (initialStatuses) {
          // 3. Инициализация квестов с учетом серверных статусов
-        const ALL_QUESTS_DATA = initQuests(initialStatuses, app);
+        const ALL_QUESTS_DATA = await initQuests(initialStatuses, app);
         
         // 4. Рендеринг квестов и установка обработчиков
         renderQuests(ALL_QUESTS_DATA);
@@ -389,6 +396,7 @@ function showToast(message) {
 
 
 // ==================== FAQ ====================
+
 
 function createFaqItem(title, description) {
     const item = document.createElement('div');

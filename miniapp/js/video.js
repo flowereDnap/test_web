@@ -6,9 +6,13 @@ class VideoPlayer {
         this.video = document.getElementById('video-player');
         this.closeBtn = document.getElementById('video-close');
         this.progressBar = document.getElementById('progress-bar');
+        this.timerCount = document.getElementById('timer-count');
+        this.timerCircle = document.getElementById('timer-progress');
         this.canSkip = false;
         this.watchedPercentage = 0;
-        this.currentVideo = null;
+        this.currentVideo = null;   
+        this.requiredTime = 15;
+        this.rewardClaimed = false;
 
         this.init();
     }
@@ -16,7 +20,13 @@ class VideoPlayer {
     init() {
         this.video.addEventListener('timeupdate', () => this.onProgress());
         this.video.addEventListener('ended', () => this.onVideoEnd());
-        this.closeBtn.addEventListener('click', () => this.close());
+        this.closeBtn.addEventListener('click', () => {
+            if (this.canSkip) {
+                this.close(true); // Закрыть сразу, если время вышло
+            } else {
+                this.handleUnfinishedClose();
+            }
+        });
 
         this.video.addEventListener('seeking', () => {
             if (this.video.currentTime > (this.video.dataset.maxTime || 0)) {
@@ -25,24 +35,61 @@ class VideoPlayer {
         });
     }
 
+    handleUnfinishedClose() {
+        this.video.pause();
+        const tg = window.Telegram?.WebApp;
+        
+        // Используем нативный попап телеграма
+        tg.showConfirm("Вы точно хотите выйти? Награда не будет получена.", (isConfirmed) => {
+            if (isConfirmed) {
+                this.close(true);
+            } else {
+                this.video.play();
+            }
+        });
+    }
+
     async loadRandomVideo() {
         try {
-            const backend = window.location.origin; // same origin
+            const backend = window.location.origin; 
             const initData = window.Telegram.WebApp.initData;
+            
+            console.log("[Video] Fetching from:", `${backend}/api/video/random`);
+            
             const res = await fetch(`${backend}/api/video/random?initData=${encodeURIComponent(initData)}`);
             if (!res.ok) throw new Error('Failed to fetch video: ' + res.status);
+            
             const data = await res.json();
+            console.log("[Video] Data received from server:", data);
 
             this.currentVideo = data;
-            this.video.src = data.video_url.startsWith('http') ? data.video_url : `${backend}${data.video_url}`;
+
+            // Формируем финальную ссылку
+            let finalUrl;
+            if (data.video_url.startsWith('http')) {
+                finalUrl = data.video_url;
+            } else {
+                // Добавляем проверку на слэш между доменом и путем
+                const cleanBackend = backend.replace(/\/$/, "");
+                const cleanPath = data.video_url.startsWith('/') ? data.video_url : `/${data.video_url}`;
+                finalUrl = `${cleanBackend}${cleanPath}`;
+            }
+
+            console.log("[Video] Final URL for player:", finalUrl);
+            
+            this.video.src = finalUrl;
             this.video.dataset.videoId = data.id;
+            
         } catch (err) {
-            console.error('Error loading random video:', err);
+            console.error('[Video] Error loading random video:', err);
             throw err;
         }
     }
 
     async open() {
+
+        this.rewardClaimed = false;
+
         try {
             await this.loadRandomVideo();
         } catch {
@@ -50,56 +97,69 @@ class VideoPlayer {
             return;
         }
 
-        this.overlay.style.display = 'flex';
+        this.overlay.classList.add('active');
         this.video.currentTime = 0;
-        this.video.dataset.maxTime = 0;
         this.canSkip = false;
         this.watchedPercentage = 0;
-        this.closeBtn.style.display = 'none';
 
-        this.video.play().catch(err => console.error('Video play error:', err));
+        this.updateTimerUI(this.requiredTime);
 
-        // haptic feedback if available
-        try {
-            const tg = window.Telegram?.WebApp;
-            if (CONFIG.hapticFeedback && tg?.HapticFeedback) {
-                tg.HapticFeedback.impactOccurred('medium');
-            }
-        } catch {}
+        this.video.play().catch(() => {
+            this.canSkip = true; // Если автоплей заблокирован
+        });
     }
 
-    close() {
-        if (!this.canSkip && this.watchedPercentage < CONFIG.videoRequiredWatchPercentage) {
-            try {
-                const tg = window.Telegram?.WebApp;
-                if (CONFIG.hapticFeedback && tg?.HapticFeedback) {
-                    tg.HapticFeedback.notificationOccurred('error');
-                }
-            } catch {}
-            return;
-        }
-        this.overlay.style.display = 'none';
+    close(force = false) {
+        if (!force && !this.canSkip) return;
+        
+        this.overlay.classList.remove('active');
         this.video.pause();
+        this.video.src = ""; // Очистка ресурса
     }
 
     onProgress() {
-        const percentage = this.video.duration ? (this.video.currentTime / this.video.duration) * 100 : 0;
-        this.watchedPercentage = percentage;
-        this.progressBar.style.width = percentage + '%';
+        const currentTime = Math.floor(this.video.currentTime);
+        const remaining = Math.max(0, this.requiredTime - currentTime);
+        
+        this.updateTimerUI(remaining);
 
-        if (this.video.currentTime > (this.video.dataset.maxTime || 0)) {
-            this.video.dataset.maxTime = this.video.currentTime;
-        }
-
-        if (percentage >= CONFIG.videoRequiredWatchPercentage && !this.canSkip) {
+        if (remaining === 0 && !this.rewardClaimed) {
             this.canSkip = true;
-            this.closeBtn.style.display = 'block';
+            this.rewardClaimed = true; // Блокируем повторный вызов
+            this.notifyBackendWatched(); // Отправляем запрос на награду
+            
+            // Опционально: виброотклик, что награда получена
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+        }
+        
+        // Твоя старая логика прогресс-бара
+        if (this.video.duration) {
+        this.watchedPercentage = (this.video.currentTime / this.video.duration) * 100;
+        if (this.progressBar) this.progressBar.style.width = this.watchedPercentage + '%';
+    }
+    }
+
+    updateTimerUI(seconds) {
+        if (this.timerCount) this.timerCount.innerText = seconds;
+        
+        // Рассчет круга: (остаток / всего) * 100
+        if (this.timerCircle) {
+            const offset = (seconds / this.requiredTime) * 100;
+            this.timerCircle.setAttribute('stroke-dasharray', `${offset}, 100`);
         }
     }
 
     onVideoEnd() {
-        this.close();
-        this.notifyBackendWatched();
+        if (!this.rewardClaimed) {
+            this.rewardClaimed = true;
+            this.canSkip = true;
+            this.notifyBackendWatched();
+        }
+
+        this.updateTimerUI(0);
+        this.close(true);
     }
 
     async notifyBackendWatched() {

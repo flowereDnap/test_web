@@ -1,53 +1,88 @@
-# bot.py — исправленный порядок хендлеров
 import os
 import sys
 import logging
 import asyncio
 import pathlib
-import db
+
 import aiohttp
 from aiohttp import web
 from dotenv import load_dotenv
-from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, WebAppInfo, InlineKeyboardMarkup, InlineKeyboardButton, Update
+
+# Основные компоненты aiogram
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-from aiogram import types
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.storage.memory import MemoryStorage
-from aiogram.fsm.state import State, StatesGroup
-from aiogram import Bot, Dispatcher, types
+from aiogram.enums import ParseMode, ContentType
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import StatesGroup, State
-from aiogram.types import InputFile, Message
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import (
+    Message, 
+    CallbackQuery, 
+    WebAppInfo, 
+    InlineKeyboardMarkup, 
+    InlineKeyboardButton, 
+    Update,
+    InputFile
+)
 
-
-from aiogram.types import InputFile, ContentType
-from aiogram import Bot, Dispatcher
-
-# попытка импортировать проверку подписи initData (если есть в aiogram)
+# Попытка импорта проверки подписи Web App
 try:
-    # разные версии aiogram могут экспортировать с разными именами
-    from aiogram.utils.web_app import check_web_app_signature as check_webapp_signature
-except Exception:
+    from aiogram.utils.web_app import check_webapp_signature
+except ImportError:
     try:
-        from aiogram.utils.web_app import check_webapp_signature
-    except Exception:
+        from aiogram.utils.web_app import check_web_app_signature as check_webapp_signature
+    except ImportError:
         check_webapp_signature = None
 
-# local db helpers
-from db import db_manager  # глобальный объект DatabaseManager с users_db
+# Локальные модули
+import db
+from db import db_manager
 
 # ----------------- load config -----------------
+
+# ----------------- logging & bot -----------------
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+
 load_dotenv()
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
-WEBHOOK_PATH = os.getenv("WEBHOOK_PATH", "/webhook/telegram")
-WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-ADMIN_ID = int(os.getenv("ADMIN_ID", "0"))
+#WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
+#WEBHOOK_PATH = os.getenv("WEBHOOK_PATH", "/webhook/telegram")
+#WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
+#WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+
+
+PORT = int(os.getenv("PORT_NEW", "8080"))
+WEBHOOK_HOST = os.getenv("WEBHOOK_HOST_NEW")
+WEBHOOK_URL = os.getenv("WEBHOOK_URL_NEW") 
+WEBHOOK_PATH = os.getenv("WEBHOOK_PATH_NEW") # /webhook
+WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN_NEW")
+
+WEBHOOK_URL_FINAL = os.getenv("WEBHOOK_URL_NEW_FINAL")
+
+
+# Загружаем ID admin
+admin_ids_raw = os.getenv("ADMIN_IDS", "")
+
+try:
+    ADMIN_IDS = []
+    for item in admin_ids_raw.split(","):
+        item = item.strip()
+        if item.isdigit():
+            ADMIN_IDS.append(int(item))
+except Exception as e:
+    logger.error(f"Error parsing ADMIN_IDS: {e}")
+    ADMIN_IDS = []
+
+
+
+def is_admin(user_id: int) -> bool:
+    return int(user_id) in ADMIN_IDS
+
+
 CSP_HEADER = (
     "default-src 'self';"
     "script-src 'self' 'wasm-unsafe-eval' https://t.me/ https://telegram.me/ https://telegram.org/;"  # <-- ДОБАВЛЕН https://telegram.org/
@@ -72,9 +107,7 @@ if not WEBHOOK_URL:
 # project root for static files
 PROJ_ROOT = pathlib.Path(__file__).parent.resolve()
 
-# ----------------- logging & bot -----------------
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+
 
 bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 storage = MemoryStorage()
@@ -216,6 +249,34 @@ async def handle_web_app(request):
 MILESTONE_QUESTS = {
     'milestone_watch_5': {'goal': 5, 'reward': 0.10}
 }
+
+async def verify_quest_handler(request: web.Request):
+    data = await request.json()
+    quest_id = data.get("quest_id")
+    telegram_id = int(data.get("telegram_id"))
+    
+    # 1. Получаем общую конфигурацию
+    config = QUEST_CONFIG_2.get(quest_id)
+    if not config: return web.json_response({"error": "Unknown quest"}, status=400)
+
+    # 2. Проверяем тип и логику
+    is_valid = False
+    if config['type'] == 'follow':
+        is_valid = await check_subscription_status(telegram_id, config['channel_username'])
+    elif config['type'] == 'milestone':
+        user_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
+        current_status = next((s['status'] for s in user_statuses if s['quest_id'] == quest_id), None)
+        is_valid = (current_status == 'ready_to_claim')
+
+    # 3. Если проверка прошла — начисляем деньги и закрываем
+    if is_valid:
+        async with db_manager.users_db.pool.acquire() as conn:
+            await conn.execute("UPDATE tg_users SET balance = balance + $1 WHERE telegram_id = $2;", 
+                               config['reward'], telegram_id)
+        await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'completed')
+        return web.json_response({"isCompleted": True, "reward": config['reward']})
+    
+    return web.json_response({"isCompleted": False})
 
 async def check_subscription_status(telegram_id: int, channel_username: str) -> bool:
     """Проверяет подписку на канал с помощью Telegram Bot API."""
@@ -508,9 +569,6 @@ async def video_watched_handler(request: web.Request):
         "quest_completed": quest_result["is_completed"]
     })
 
-def get_admin_id() -> int:
-    return ADMIN_ID
-
 async def save_user_to_db(user, timezone: str | None = None):
     if not db_manager.users_db:
         logger.warning("save_user_to_db: users_db not initialized")
@@ -701,9 +759,16 @@ async def get_random_video(request: web.Request):
     vurl = video["video_url"]
     # если в БД относительный путь, делаем абсолютный на основе request
     if not vurl.startswith("http://") and not vurl.startswith("https://"):
-        scheme = request.scheme
+        scheme = "https" # Принудительно ставим https, так как у нас есть SSL
         host = request.headers.get("Host")
-        vurl = f"{scheme}://{host}/{vurl}"
+        
+        # Гарантируем, что путь начинается с ОДНОГО слэша
+        path = vurl if vurl.startswith("/") else f"/{vurl}"
+        
+        # Убираем возможный слэш в конце хоста и склеиваем
+        vurl = f"{scheme}://{host.rstrip('/')}{path}"
+
+    logger.info(f"Sending video URL to frontend: {vurl}") # Добавим лог в консоль сервера
 
     return web.json_response({
         "id": video["id"],
@@ -816,13 +881,15 @@ async def get_quests_statuses(request: web.Request):
 
 @dp.message(F.text == "/start")
 async def start_handler(message: Message):
+
+ 
     text = message.text or ""
     parts = text.split(maxsplit=1)
     args = parts[1] if len(parts) > 1 else ""
     user = message.from_user
     timezone = None  # можно передать реальное значение из WebApp JS
     await save_user_to_db(user, timezone=timezone)
-    # синк видео при старте (можно отключить, если дорого)
+    # синк видео при старте (можно отключить, если дорого) 
     try:
         await db_manager.videos_db.sync_videos_from_folder()
     except Exception:
@@ -830,14 +897,14 @@ async def start_handler(message: Message):
 
     if args:
         await save_referral(new_user_id=user.id, ref_payload=args)
-    if user.id == get_admin_id():
+    if is_admin(user.id):
         await message.answer("Привет, админ. Выберите действие:", reply_markup=admin_keyboard())
     else:
         await message.answer("Привет! Нажми кнопку, чтобы открыть мини-апп 👇", reply_markup=user_keyboard())
 
 @dp.message(F.text == "/admin")
 async def cmd_admin(message: Message):
-    if message.from_user.id != get_admin_id():
+    if not is_admin(message.from_user.id):
         await message.reply("Доступ только для админа.")
         return
     await message.reply("Админ меню:", reply_markup=admin_keyboard())
@@ -847,7 +914,7 @@ async def cmd_admin(message: Message):
 @dp.callback_query(F.data == "admin_stats")
 async def admin_stats_callback(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
-    if user_id != get_admin_id():
+    if not is_admin(user_id):
         await callback_query.answer("У вас нет прав", show_alert=True)
         return
     
@@ -865,11 +932,9 @@ async def admin_stats_callback(callback_query: types.CallbackQuery, state: FSMCo
 @dp.callback_query(F.data == "create_broadcast")
 async def broadcast_callback(callback_query: types.CallbackQuery, state: FSMContext):
     user_id = callback_query.from_user.id
-    if user_id != get_admin_id():
+    if not is_admin(user_id):
         await callback_query.answer("У вас нет прав", show_alert=True)
         return
-
-    
     # Запуск FSM
     await callback_query.message.answer("Название рассылки (только для вас)")
     await state.set_state(BroadcastStates.waiting_name)
@@ -881,7 +946,7 @@ async def broadcast_callback(callback_query: types.CallbackQuery, state: FSMCont
 async def broadcast_callback(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
     
-    if user_id != get_admin_id():
+    if not is_admin(user_id):
         await callback_query.answer("У вас нет прав", show_alert=True)
         return
 
@@ -917,7 +982,7 @@ async def run_broadcast_callback(callback_query: types.CallbackQuery):
     # ... (проверки прав остаются)
     user_id = callback_query.from_user.id
     
-    if user_id != get_admin_id():
+    if not is_admin(user_id):
         await callback_query.answer("У вас нет прав", show_alert=True)
         return
         
@@ -967,7 +1032,7 @@ async def run_broadcast_callback(callback_query: types.CallbackQuery):
 
 @dp.message(Command("broadcast"))
 async def start_broadcast(message: types.Message, state: FSMContext):
-    if message.from_user.id != ADMIN_ID:
+    if not is_admin(message.from_user.id):
         return
     await state.clear() # Начинаем с чистого листа
     await message.answer("Отправьте медиа-файл (картинка, гифка или видео) или документ")
@@ -1085,10 +1150,15 @@ async def handle_webhook(request: web.Request):
     return web.Response(status=200, text="OK")
 
 async def set_webhook():
+
+    webhook_address = f"{WEBHOOK_URL}{WEBHOOK_PATH}/{WEBHOOK_SECRET_TOKEN}"
+
     await bot.delete_webhook()
-    await bot.set_webhook(url=WEBHOOK_URL, secret_token=WEBHOOK_SECRET_TOKEN, allowed_updates=[])
+    await bot.set_webhook(url=WEBHOOK_URL_FINAL,
+                          secret_token=WEBHOOK_SECRET_TOKEN,
+                          allowed_updates=[])
     await set_main_commands(bot)
-    logger.info(f"Webhook set to {WEBHOOK_URL}")
+    logger.info(f"Webhook set to {WEBHOOK_URL_FINAL}")
 
 # ---------- App lifecycle ----------
 @web.middleware
@@ -1128,7 +1198,7 @@ async def start_app():
     app.router.add_post('/api/quest/complete', complete_quest_handler)
     app.router.add_get('/api/quest/get_list', get_quest_config_list)
 
-    app.router.add_post(f"{WEBHOOK_PATH}/{{secret}}", handle_webhook)
+    app.router.add_post(f"{WEBHOOK_PATH}/telegram/{{secret}}", handle_webhook)
 
     # Serve miniapp folder (CSS/JS/images) under '/'
     miniapp_path = PROJ_ROOT / "miniapp"
@@ -1160,14 +1230,13 @@ async def start_app():
 
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host="0.0.0.0", port=int(os.getenv("PORT", "80")))
+    site = web.TCPSite(runner, host="127.0.0.1", port=PORT)
     await site.start()
-    logger.info("Webhook server started on port %s", os.getenv("PORT", "80"))
+    logger.info("Webhook server started on port %s", PORT)
     await set_webhook()
 
     # keep running
-    while True:
-        await asyncio.sleep(3600)
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
     try:

@@ -10,12 +10,19 @@ class Quest {
      * @param {string} buttonText - Текст кнопки действия.
      * @param {boolean} isCompleted - Статус выполнения.
      */
+    
     constructor(id, title, reward, buttonText = 'Проверить', isCompleted = false) {
         this.id = id;
         this.title = title;
         this.reward = reward;
         this.buttonText = buttonText;
         this.isCompleted = isCompleted;
+    }
+
+    vibrate(type = 'success') {
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred(type);
+        }
     }
 
     /**
@@ -101,6 +108,15 @@ class FollowQuest extends Quest {
         this.isLinkVisited = isLinkVisited; // [НОВОЕ] Состояние для управления текстом
     }
 
+    updateButton(btn) {
+        if (this.isCompleted) {
+            btn.textContent = '✅';
+            btn.disabled = true;
+        } else {
+            btn.textContent = this.isVisited ? 'Проверить' : 'Перейти';
+        }
+    }
+
     // [ИЗМЕНЕНО] Обновляем toHtml для управления текстом кнопки
     toHtml() {
         const item = document.createElement('div');
@@ -145,9 +161,35 @@ class FollowQuest extends Quest {
         item.appendChild(buttonContentElement);
         return item;
     }
+
+    async onClick(app, btn) {
+        const userId = app.tg.initDataUnsafe?.user?.id;
+        
+        if (!this.isVisited) {
+            // Шаг 1: Помечаем визит
+            await fetch('/api/quest/visited', {
+                method: 'POST',
+                body: JSON.stringify({ quest_id: this.id, telegram_id: userId })
+            });
+            window.Telegram.WebApp.openTelegramLink(this.targetLink);
+            this.isVisited = true;
+            this.updateButton(btn);
+        } else {
+            // Шаг 2: Проверяем выполнение
+            const res = await fetch('/api/quest/verify', {
+                method: 'POST',
+                body: JSON.stringify({ quest_id: this.id, telegram_id: userId })
+            }).then(r => r.json());
+
+            if (res.isCompleted) {
+                this.isCompleted = true;
+                this.vibrate();
+                this.updateButton(btn);
+                app.state.updateBalance(res.reward);
+            }
+        }
+    }
     
-    // Удаляем checkCompletion из FollowQuest, так как логика теперь будет в обработчике.
-    // Если его оставить, он должен быть пустым или вызывать API.
 }
 
 
@@ -181,6 +223,14 @@ class MilestoneQuest extends Quest {
                 htmlItem.querySelector('.quest-details').appendChild(progressBarElement);
             }
         }
+
+        if (!this.isCompleted) {
+            const canClaim = this.currentCount >= this.requiredCount;
+            actionElement.textContent = canClaim ? 'Получить награду' : 'В процессе';
+            actionElement.disabled = !canClaim;
+            if (canClaim) actionElement.classList.add('pulse-animation'); // Доп. акцент
+        }
+
         return htmlItem;
     }
 
@@ -219,7 +269,9 @@ class MilestoneQuest extends Quest {
 
 // Инициализация квестов на основе данных сервера
 async function initQuests(serverStatuses, app) { // <-- ПРИНИМАЕМ app
-    const statusMap = new Map(serverStatuses.map(q => [q.quest_id, q.status]));
+    // ПРОВЕРКА: Убедимся, что serverStatuses является массивом, иначе .map упадет
+    const statuses = Array.isArray(serverStatuses) ? serverStatuses : [];
+    const statusMap = new Map(statuses.map(q => [q.quest_id, q.status]));
     const ALL_QUESTS_DATA = [];
 
     // [НОВОЕ] Получаем текущий счетчик просмотровнам
@@ -257,84 +309,15 @@ async function initQuests(serverStatuses, app) { // <-- ПРИНИМАЕМ app
                 config.id, 
                 config.title, 
                 `+${config.reward}$`, 
-                isCompleted, 
-                config.id === 'milestone_watch_5' ? currentVideoCount : 0, 
-                config.goal
+                config.goal, // ❗ ИСПРАВЛЕНИЕ: requiredCount теперь config.goal
+                config.id === 'milestone_watch_5' ? currentVideoCount : 0, // currentCount
+                isCompleted // ❗ ИСПРАВЛЕНИЕ: isCompleted в конце
             ));
         }
     }
     return ALL_QUESTS_DATA;
 }
 
-// Главная функция рендеринга
-function renderQuests(ALL_QUESTS_DATA) {
-    const container = document.getElementById('quests-list');
-    if (!container) return;
-
-    // 1. Очистка контейнера перед рендерингом
-    container.innerHTML = ''; // Очистка, тут innerHTML допустим
-
-    ALL_QUESTS_DATA.forEach(quest => {
-        const questItem = document.createElement('div');
-        questItem.className = 'quest-item';
-        questItem.dataset.id = quest.id;
-
-        // --- 1. Контент Квеста (замена innerHTML) ---
-        const questContent = document.createElement('div');
-        questContent.className = 'quest-content';
-        
-        const questInfo = document.createElement('div');
-        questInfo.className = 'quest-info';
-        
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'quest-title';
-        titleDiv.textContent = quest.title;
-        
-        const rewardDiv = document.createElement('div');
-        rewardDiv.className = 'quest-reward';
-        rewardDiv.textContent = quest.reward;
-        
-        questInfo.appendChild(titleDiv);
-        questInfo.appendChild(rewardDiv);
-        questContent.appendChild(questInfo);
-        
-        // Добавление прогресс-бара
-        if (quest instanceof MilestoneQuest) {
-            const progressBarElement = renderProgressBar(quest);
-            if (progressBarElement) {
-                questContent.appendChild(progressBarElement);
-            }
-        }
-        questItem.appendChild(questContent);
-        
-        // --- 2. Кнопка и статус ---
-        const button = document.createElement('button');
-        button.className = 'primary-btn quest-button';
-        button.disabled = quest.isCompleted;
-        let buttonText = 'Начать';
-        if (quest.isCompleted) {
-             buttonText = '✅ Выполнено';
-        } else if (quest instanceof FollowQuest) {
-             buttonText = quest.isLinkVisited ? 'Проверить' : 'Перейти';
-        } else if (quest instanceof MilestoneQuest) {
-             buttonText = 'В процессе';
-             button.disabled = true; // Кнопка MilestoneQuest неактивна до выполнения
-        }
-        button.textContent = buttonText;
-        
-        if (quest.isCompleted) {
-            markQuestCompleted(questItem, button); // Применяем классы
-        }
-
-        // 3. Добавление кнопки и элемента в контейнер
-        const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'quest-button-container';
-        buttonContainer.appendChild(button);
-        
-        questItem.appendChild(buttonContainer);
-        container.appendChild(questItem);
-    });
-}
 
 /**
  * Рендерит список квестов в DOM.
@@ -343,6 +326,12 @@ function renderQuests(ALL_QUESTS_DATA) {
 function renderQuestList(questsArray) {
     const questsListContainer = document.getElementById('quests-list');
     if (!questsListContainer) return;
+    
+    // ❗ ИСПРАВЛЕНИЕ: Проверка на массив
+    if (!Array.isArray(questsArray)) {
+        console.error("renderQuestList received non-array data. Check if await is used in app.js.", questsArray);
+        return; 
+    }
 
     questsListContainer.innerHTML = ''; // Очищаем
 
@@ -356,15 +345,17 @@ function renderQuestList(questsArray) {
 /**
  * Обрабатывает нажатие на кнопку "Проверить", "Перейти" или "Получить награду".
  * @param {MiniApp} app - Экземпляр главного приложения.
- */
-// [ИЗМЕНЕНИЕ] Передаем ALL_QUESTS_DATA
-/**
- * Обрабатывает нажатие на кнопку "Проверить", "Перейти" или "Получить награду".
- * @param {MiniApp} app - Экземпляр главного приложения.
  * @param {Array<Quest>} ALL_QUESTS_DATA - Массив объектов Quest.
  */
 function setupQuestHandlers(app, ALL_QUESTS_DATA) {
     const questsList = document.getElementById('quests-list');
+    
+    // ❗ ИСПРАВЛЕНИЕ: Проверка на массив в обработчике
+    if (!Array.isArray(ALL_QUESTS_DATA)) {
+        console.warn("setupQuestHandlers received non-array data. Cannot set up handlers.");
+        return;
+    }
+
 
     questsList.addEventListener('click', async (e) => {
         
@@ -377,7 +368,7 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
         if (!questItem) return; 
         
         // 3. Получаем questId из data-атрибута (ИСПРАВЛЕНИЕ ReferenceError)
-        const questId = questItem.dataset.id; 
+        const questId = questItem.dataset.id || questItem.dataset.questId; // Проверяем оба варианта
         if (!questId) return;
 
         // 4. Находим объект квеста
@@ -385,9 +376,7 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
 
         // Дополнительная проверка, если квест уже выполнен или объект не найден
         if (!questObject || questObject.isCompleted) {
-            // Если кнопка не 'completed-icon', она должна быть неактивна в HTML, 
-            // но на всякий случай тут можно вернуть ошибку/сообщение.
-             return; 
+            return; 
         }
 
         // Отключаем кнопку на время обработки
@@ -452,6 +441,10 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
         // --- ОБЩАЯ ЛОГИКА ЗАВЕРШЕНИЯ КВЕСТА ---
         
         if (apiResult.isCompleted) {
+            if (window.Telegram?.WebApp?.HapticFeedback) {
+                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+            }
+
             // 1. Обновляем объект квеста
             questObject.isCompleted = true;
             
@@ -473,6 +466,7 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
 
         } else if (questObject instanceof FollowQuest && questObject.isLinkVisited) {
 
+            // Если FollowQuest проверялся, но не выполнен, возвращаем кнопку в состояние "Перейти"
             questObject.isLinkVisited = false;
             
             button.textContent = 'Перейти';
@@ -480,8 +474,8 @@ function setupQuestHandlers(app, ALL_QUESTS_DATA) {
             
         } else if (questObject instanceof MilestoneQuest) {
              // Если MilestoneQuest проверялся, но сервер отказал
-            button.textContent = 'Получить награду';
-            app.showToast('⚠️ Ошибка при получении награды.', 'error');
+             button.textContent = 'Получить награду';
+             app.showToast('⚠️ Ошибка при получении награды.', 'error');
         }
 
         button.disabled = false;
@@ -504,8 +498,8 @@ function markQuestCompleted(questItem, button) {
 function renderProgressBar(quest) {
     if (!(quest instanceof MilestoneQuest)) return null; // Возвращаем null вместо пустой строки
 
-    const percent = Math.min(100, (quest.currentCount / quest.goal) * 100).toFixed(0);
-    const progressText = `${quest.currentCount} из ${quest.goal}`;
+    const percent = Math.min(100, (quest.currentCount / quest.requiredCount) * 100).toFixed(0);
+    const progressText = `${quest.currentCount} из ${quest.requiredCount}`;
 
     const progressBarContainer = document.createElement('div');
     progressBarContainer.className = 'quest-progress-bar';
@@ -527,4 +521,3 @@ function renderProgressBar(quest) {
 
     return progressBarContainer; // Возвращаем элемент
 }
-

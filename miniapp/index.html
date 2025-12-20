@@ -90,17 +90,23 @@
         </div>
             </div>
 
-        <div class="video-overlay" id="video-overlay">
-        <div class="video-container">
-            <button class="video-close" id="video-close">✕</button>
-            <video class="video-player" id="video-player" playsinline>
-                <source src="./vids/casino1.mp4" type="video/mp4">
-            </video>
-            <div class="video-progress">
-                <div class="video-progress-bar" id="progress-bar"></div>
+        <div id="video-overlay" class="video-overlay">
+            <video id="video-player" playsinline></video>
+                
+            <div id="video-close" class="video-overlay-btn close-btn">✕</div>
+                
+            <div id="video-timer" class="video-overlay-btn timer-btn">
+                <svg viewBox="0 0 36 36" class="timer-svg">
+                    <path class="timer-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                    <path id="timer-progress" class="timer-circle" stroke-dasharray="100, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                </svg>
+                <span id="timer-count">15</span>
+            </div>
+        
+            <div class="video-progress-container" style="display:none;">
+                <div id="progress-bar" class="video-progress-bar"></div>
             </div>
         </div>
-    </div>
 
         <div class="reward-popup" id="reward-popup">
         <div class="reward-emoji">🎉</div>

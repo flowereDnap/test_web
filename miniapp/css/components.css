@@ -138,7 +138,7 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000;
+    z-index: 9999 !important;
     opacity: 0;
     visibility: hidden;
     transition: opacity var(--transition-normal), visibility var(--transition-normal);
@@ -190,4 +190,60 @@
     color: var(--primary-color); 
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
+}
+
+/* Общие стили для кнопок поверх видео */
+.video-overlay-btn {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.5);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    pointer-events: auto; /* Чтобы нажимались */
+    z-index: 100;
+}
+
+/* Кнопка закрытия (сверху слева) */
+.close-btn {
+    top: 20px;
+    left: 20px;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+/* Контейнер таймера (снизу слева) */
+.timer-btn {
+    bottom: 30px;
+    left: 20px;
+    width: 50px;
+    height: 50px;
+}
+
+#timer-count {
+    position: absolute;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+/* SVG Спиннер */
+.timer-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+.timer-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.2);
+    stroke-width: 3;
+}
+.timer-circle {
+    fill: none;
+    stroke: white;
+    stroke-width: 3;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.3s linear;
 }
