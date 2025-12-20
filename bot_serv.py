@@ -8,6 +8,10 @@ import aiohttp
 from aiohttp import web
 from dotenv import load_dotenv
 
+
+from config import *
+from api.routes import *
+
 # Основные компоненты aiogram
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.client.default import DefaultBotProperties
@@ -26,15 +30,6 @@ from aiogram.types import (
     InputFile
 )
 
-# Попытка импорта проверки подписи Web App
-try:
-    from aiogram.utils.web_app import check_webapp_signature
-except ImportError:
-    try:
-        from aiogram.utils.web_app import check_web_app_signature as check_webapp_signature
-    except ImportError:
-        check_webapp_signature = None
-
 # Локальные модули
 import db
 from db import db_manager
@@ -44,28 +39,6 @@ from db import db_manager
 # ----------------- logging & bot -----------------
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-load_dotenv()
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-#WEBHOOK_HOST = os.getenv("WEBHOOK_HOST")
-#WEBHOOK_PATH = os.getenv("WEBHOOK_PATH", "/webhook/telegram")
-#WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN")
-#WEBHOOK_URL = os.getenv("WEBHOOK_URL")
-
-
-PORT = int(os.getenv("PORT_NEW", "8080"))
-WEBHOOK_HOST = os.getenv("WEBHOOK_HOST_NEW")
-WEBHOOK_URL = os.getenv("WEBHOOK_URL_NEW") 
-WEBHOOK_PATH = os.getenv("WEBHOOK_PATH_NEW") # /webhook
-WEBHOOK_SECRET_TOKEN = os.getenv("WEBHOOK_SECRET_TOKEN_NEW")
-
-WEBHOOK_URL_FINAL = os.getenv("WEBHOOK_URL_NEW_FINAL")
-
-
-# Загружаем ID admin
-admin_ids_raw = os.getenv("ADMIN_IDS", "")
 
 try:
     ADMIN_IDS = []
@@ -82,14 +55,6 @@ except Exception as e:
 def is_admin(user_id: int) -> bool:
     return int(user_id) in ADMIN_IDS
 
-
-CSP_HEADER = (
-    "default-src 'self';"
-    "script-src 'self' 'wasm-unsafe-eval' https://t.me/ https://telegram.me/ https://telegram.org/;"  # <-- ДОБАВЛЕН https://telegram.org/
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;"
-    "font-src 'self' https://fonts.gstatic.com;"
-    "img-src 'self' data: https://ngrok.com;"
-)
 
 if not BOT_TOKEN:
     print("ERROR: BOT_TOKEN not set in .env")
@@ -117,471 +82,11 @@ dp = Dispatcher(storage=storage)
 
 # ---------- Helper functions (DB-backed) ----------
 
-# bot.py (Новый хелпер для связи с Telegram API)
-
-async def check_subscription_status(telegram_id: int, channel_username: str) -> bool:
-    """Проверяет статус подписки пользователя в канале через Bot API."""
-    if not BOT_TOKEN:
-        logger.error("BOT_TOKEN is missing.")
-        return False
-        
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
-    params = {
-        'chat_id': channel_username,
-        'user_id': telegram_id
-    }
-    
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.get(url, params=params) as resp:
-                if resp.status != 200:
-                    # Сценарий, если бот не админ или API-ошибка (обработка 400)
-                    logger.error(f"Telegram API error (getChatMember, Status {resp.status}) for user {telegram_id} in {channel_username}: {await resp.text()}")
-                    # Возвращаем False, так как проверку выполнить не удалось
-                    return False
-                    
-                data = await resp.json()
-                if data.get('ok'):
-                    status = data['result']['status']
-                    # Статусы: member, creator, administrator
-                    return status in ['member', 'creator', 'administrator']
-                else:
-                    logger.error(f"Telegram API result not ok: {data.get('description')} for user {telegram_id} in {channel_username}")
-                    return False
-        except Exception as e:
-            logger.error(f"Exception during check_subscription_status: {e}")
-            return False
-
-QUEST_CONFIG = {
-    'quest_subscribe_channel': {
-        'channel_username': '@bebes1114', # <-- Обязательно замените!
-        'reward': 0.50,
-        'type': 'follow'
-    },
-    'milestone_watch_5': {
-        'reward': 0.75,
-        'goal': 5,
-        'type': 'milestone'
-    }
-}
-
-MILESTONE_QUESTS = {
-    'milestone_watch_5': {'goal': 5, 'reward': 0.10}
-}
-
-# [НОВОЕ] Добавьте конфигурации для FollowQuest
-FOLLOW_QUESTS = {
-    'quest_subscribe_channel': {
-        'channel_username': '@bebes1114', # <-- Обязательно замените!
-        'reward': 0.50,
-        'type': 'follow'
-    },
-}
+async def on_startup(app):
+    app['http_session'] = aiohttp.ClientSession()
 
 
-# 1. Используем QUEST_CONFIG, который вы определили:
-QUEST_CONFIG_2 = {
-    'quest_subscribe_channel': {
-        'title': 'Подпишись на наш канал', # [НОВОЕ] Добавьте title, его не было в вашем примере
-        'link': 'https://t.me/bebes1114',
-        'channel_username': '@bebes1114',
-        'reward': 0.50,
-        'type': 'follow'
-    },
-    'milestone_watch_5': {
-        'title': 'Посмотри 5 видео', # [НОВОЕ] Добавьте title
-        'reward': 0.75,
-        'goal': 5,
-        'type': 'milestone'
-    },
-    # Добавьте другие квесты, например:
-    'quest_casino_reg': {
-        'title': 'Регистрация в Казино',
-        'link': 'https://casino.com/ref',
-        'channel_username': '@casino_channel', 
-        'reward': 1.00,
-        'type': 'follow'
-    },
-}
 
-async def get_quest_config_list(request: web.Request):
-    """
-    GET /api/quest/get_list
-    Возвращает полный список конфигураций квестов.
-    """
-    quest_list = []
-    for quest_id, config in QUEST_CONFIG_2.items():
-        # Копируем конфигурацию
-        item = config.copy()
-        # Добавляем ID в объект
-        item['id'] = quest_id
-        quest_list.append(item)
-        
-    return web.json_response(quest_list)
-
-def get_quest_config(quest_id: str) -> dict | None:
-    return QUEST_CONFIG.get(quest_id)
-
-def get_channel_username_for_quest(quest_id: str) -> str | None:
-    config = get_quest_config(quest_id)
-    return config.get('channel_username') if config and config.get('type') == 'follow' else None
-
-def get_quest_reward_amount(quest_id: str) -> float:
-    config = get_quest_config(quest_id)
-    return config.get('reward', 0.0) if config else 0.0
-
-async def handle_web_app(request):
-
-    html_path = os.path.join(PROJ_ROOT, 'miniapp', 'index.html')
-    # Загружаем содержимое index.html
-    with open(html_path, "r", encoding="utf-8") as f:
-        html_content = f.read()
-
-    # Создаем текстовый ответ
-    response = web.Response(text=html_content, content_type='text/html')
-    
-    # !!! КРИТИЧЕСКИЙ ШАГ: Добавление заголовка CSP !!!
-    response.headers['Content-Security-Policy'] = CSP_HEADER
-    
-    return response
-
-# Предположим, что награды и цели MilestoneQuest хранятся тут (или в БД)
-MILESTONE_QUESTS = {
-    'milestone_watch_5': {'goal': 5, 'reward': 0.10}
-}
-
-async def verify_quest_handler(request: web.Request):
-    data = await request.json()
-    quest_id = data.get("quest_id")
-    telegram_id = int(data.get("telegram_id"))
-    
-    # 1. Получаем общую конфигурацию
-    config = QUEST_CONFIG_2.get(quest_id)
-    if not config: return web.json_response({"error": "Unknown quest"}, status=400)
-
-    # 2. Проверяем тип и логику
-    is_valid = False
-    if config['type'] == 'follow':
-        is_valid = await check_subscription_status(telegram_id, config['channel_username'])
-    elif config['type'] == 'milestone':
-        user_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
-        current_status = next((s['status'] for s in user_statuses if s['quest_id'] == quest_id), None)
-        is_valid = (current_status == 'ready_to_claim')
-
-    # 3. Если проверка прошла — начисляем деньги и закрываем
-    if is_valid:
-        async with db_manager.users_db.pool.acquire() as conn:
-            await conn.execute("UPDATE tg_users SET balance = balance + $1 WHERE telegram_id = $2;", 
-                               config['reward'], telegram_id)
-        await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'completed')
-        return web.json_response({"isCompleted": True, "reward": config['reward']})
-    
-    return web.json_response({"isCompleted": False})
-
-async def check_subscription_status(telegram_id: int, channel_username: str) -> bool:
-    """Проверяет подписку на канал с помощью Telegram Bot API."""
-    if not channel_username or not BOT_TOKEN:
-        print("ERROR: BOT_TOKEN or Channel username is missing for quest check.")
-        return False
-        
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatMember"
-    params = {
-        'chat_id': channel_username,
-        'user_id': telegram_id
-    }
-    
-    # Используем aiohttp.ClientSession (предполагая, что он импортирован)
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url, params=params) as resp:
-            if resp.status != 200:
-                print(f"Telegram API Error (Status {resp.status}): {await resp.text()}")
-                return False
-                
-            result = await resp.json()
-            status = result.get('result', {}).get('status')
-            
-            # Статусы, указывающие на подписку: member, creator, administrator
-            is_subscribed = status in ['member', 'creator', 'administrator']
-            return is_subscribed
-
-async def check_milestone_quest_completion(telegram_id: int, counter_key: str, new_count: int):
-    """
-    Проверяет, достигнута ли цель для квеста просмотра видео.
-    Если достигнута и не был завершен/готов ранее, обновляет статус на 'ready_to_claim'.
-    """
-    if counter_key == 'videos_watched':
-        quest_id = 'milestone_watch_5'
-        quest_config = MILESTONE_QUESTS.get(quest_id)
-        
-        if not quest_config:
-            return {"is_ready_to_claim": False}
-
-        # 1. Проверяем статус в БД
-        user_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
-        current_status = next((s['status'] for s in user_statuses if s['quest_id'] == quest_id), None)
-        
-        # Награда начисляется ТОЛЬКО при вызове /api/quest/complete
-        if new_count >= quest_config['goal'] and current_status not in ['completed', 'ready_to_claim']:
-            # 2. Обновляем статус на 'ready_to_claim'
-            await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'ready_to_claim')
-            return {"is_ready_to_claim": True}
-            
-    return {"is_ready_to_claim": False}
-
-# --- НОВЫЙ ОБРАБОТЧИК: check_follow_quest_status_handler ---
-async def check_follow_quest_status_handler(request: web.Request):
-    """
-    POST /api/quest/check
-    body: { quest_id: str, telegram_id: int }
-    Handles FollowQuest completion check (app.checkQuestStatus).
-    """
-    try:
-        data = await request.json()
-        quest_id = data.get("quest_id")
-        telegram_id = data.get("telegram_id")
-    except Exception:
-        return web.json_response({"error": "Invalid JSON"}, status=400)
-
-    if not quest_id or not telegram_id:
-        return web.json_response({"error": "Missing fields"}, status=400)
-        
-    quest_config = FOLLOW_QUESTS.get(quest_id)
-
-    if not quest_config:
-         return web.json_response({"status": "error", "error": "FollowQuest not configured"}, status=400)
-
-    channel_username = quest_config.get('channel_username') # !!! НУЖНО ПОЛУЧИТЬ ЮЗЕРНЕЙМ !!!
-    if not channel_username:
-         return web.json_response({"status": "error", "error": "Channel username missing in config"}, status=400)
-
-    reward = quest_config['reward']
-    
-    # 1. Проверяем текущий статус (должен быть 'visited' или null)
-    user_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
-    current_status = next((s['status'] for s in user_statuses if s['quest_id'] == quest_id), None)
-    
-
-    is_external_check_successful = await check_subscription_status(telegram_id, channel_username)
-    # ********************************************************************************************
-    
-    if is_external_check_successful:
-        # 2. Начисляем награду и обновляем статус
-        async with db_manager.users_db.pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE tg_users SET balance = balance + $1 WHERE telegram_id = $2;",
-                reward, telegram_id
-            )
-        await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'completed')
-        
-        return web.json_response({
-            "status": "ok",
-            "isCompleted": True,
-            "reward": reward
-        })
-    else:
-        await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'initial')      
-        return web.json_response({"status": "ok", "isCompleted": False})
-    
-    # Если статус не 'visited' или внешняя проверка не прошла
-    return web.json_response({"status": "ok", "isCompleted": False}) # isCompleted: false соответствует quests.js
-
-
-# --- НОВЫЙ ОБРАБОТЧИК: complete_quest_handler ---
-async def complete_quest_handler(request: web.Request):
-    """
-    POST /api/quest/complete
-    body: { quest_id: str, telegram_id: int }
-    Handles MilestoneQuest reward claiming (app.completeQuest).
-    """
-    try:
-        data = await request.json()
-        quest_id = data.get("quest_id")
-        telegram_id = data.get("telegram_id")
-    except Exception:
-        return web.json_response({"error": "Invalid JSON"}, status=400)
-
-    if not quest_id or not telegram_id:
-        return web.json_response({"error": "Missing fields"}, status=400)
-        
-    quest_config = MILESTONE_QUESTS.get(quest_id)
-    if not quest_config:
-         return web.json_response({"status": "error", "error": "MilestoneQuest not configured"}, status=400)
-
-    reward = quest_config['reward']
-    
-    # 1. Проверяем, готов ли квест к получению награды (статус 'ready_to_claim')
-    user_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
-    current_status = next((s['status'] for s in user_statuses if s['quest_id'] == quest_id), None)
-    
-    if current_status == 'ready_to_claim':
-        # 2. Начисляем награду и обновляем статус
-        async with db_manager.users_db.pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE tg_users SET balance = balance + $1 WHERE telegram_id = $2;",
-                reward, telegram_id
-            )
-        await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'completed')
-        
-        return web.json_response({
-            "status": "ok",
-            "isCompleted": True,
-            "reward": reward
-        })
-    
-    # Если не готов к получению
-    return web.json_response({"status": "ok", "isCompleted": False})
-
-
-async def mark_quest_visited(request):
-    quest_db: db.QuestStatusDBManager = request.app['db_manager'].quests_db
-    try:
-        data = await request.json()
-        
-        # Получаем telegram_id из заголовка или данных (ВАЖНО: откуда вы его берете?)
-        # В идеале, telegram_id должен идти через заголовок X-Telegram-User-ID, 
-        # но пока возьмем из тела, как и предполагалось:
-        telegram_id = data.get('telegram_id')
-        quest_id = data.get('quest_id')
-        
-        if not telegram_id or not quest_id:
-            return web.json_response({'status': 'error', 'error': 'Missing data'}, status=400)
-            
-        telegram_id = int(telegram_id) # Убеждаемся, что это число
-        
-        # !!! ИСПОЛЬЗУЕМ ВАШУ ФУНКЦИЮ БД !!!
-        await quest_db.set_quest_status(telegram_id, quest_id, 'visited')
-        
-        print(f"✅ Quest {quest_id} marked as VISITED for user {telegram_id}.")
-        return web.json_response({'status': 'ok', 'message': 'Status set to visited'})
-
-    except ValueError:
-        return web.json_response({'status': 'error', 'error': 'Invalid telegram_id format'}, status=400)
-    except Exception as e:
-        print(f"Error in mark_quest_visited: {e}")
-        return web.json_response({'status': 'error', 'error': 'Internal server error'}, status=500)
-
-async def check_quest_status(request):
-    db_manager: db.DatabaseManager = request.app['db_manager']
-    db_quests: db.QuestStatusDBManager = db_manager.quests_db
-    db_users: db.UsersDBManager = db_manager.users_db
-    
-    try:
-        telegram_id = request.query.get('telegram_id')
-        quest_id = request.query.get('quest_id')
-        
-        if not telegram_id or not quest_id:
-            return web.json_response({'isCompleted': False, 'error': 'Missing ID'}, status=400)
-            
-        telegram_id = int(telegram_id)
-        
-        config = get_quest_config(quest_id)
-        if not config:
-            return web.json_response({'isCompleted': False, 'error': 'Quest not found'}, status=404)
-
-        # --- 1. Логика FollowQuest (Подписка) ---
-        if config['type'] == 'follow':
-            channel_username = get_channel_username_for_quest(quest_id)
-            if not channel_username:
-                 return web.json_response({'isCompleted': False, 'error': 'Channel link missing'}, status=400)
-            
-            is_subscribed = await check_subscription_status(telegram_id, channel_username)
-            
-            if is_subscribed:
-                reward = get_quest_reward_amount(quest_id)
-                
-                # 2. Обновляем статус в БД на 'completed'
-                await db_quests.set_quest_status(telegram_id, quest_id, 'completed')
-                
-                # 3. Увеличиваем баланс пользователя
-                # ВАЖНО: Ваша БД имеет только 'update_balance', поэтому нам нужно получить текущий баланс
-                user_record = await db_users.get_user_by_telegram_id(telegram_id)
-                if user_record:
-                    new_balance = user_record['balance'] + reward
-                    await db_users.update_balance(telegram_id, new_balance)
-                
-                print(f"🎉 Follow Quest {quest_id} completed for user {telegram_id}. Reward: {reward}")
-                
-                return web.json_response({
-                    'isCompleted': True, 
-                    'reward': reward 
-                })
-            else:
-                return web.json_response({'isCompleted': False, 'reward': 0})
-                
-        # --- 2. Логика MilestoneQuest (Просмотры) ---
-        elif config['type'] == 'milestone':
-             # Эта логика должна быть отдельной, т.к. фронтенд вызывает completeQuest, а не checkQuestStatus
-             # Но для простоты: проверяем, достигнута ли цель
-             current_count = await db_manager.counters_db.get_counter(telegram_id, 'videos_watched')
-             if current_count >= config['goal']:
-                 # Логика получения награды
-                 reward = get_quest_reward_amount(quest_id)
-                 await db_quests.set_quest_status(telegram_id, quest_id, 'completed')
-                 
-                 user_record = await db_users.get_user_by_telegram_id(telegram_id)
-                 if user_record:
-                     new_balance = user_record['balance'] + reward
-                     await db_users.update_balance(telegram_id, new_balance)
-                     
-                 print(f"🎉 Milestone Quest {quest_id} completed for user {telegram_id}. Reward: {reward}")
-
-                 return web.json_response({'isCompleted': True, 'reward': reward})
-             
-             return web.json_response({'isCompleted': False, 'reward': 0})
-
-    except ValueError:
-        return web.json_response({'isCompleted': False, 'error': 'Invalid ID format'}, status=400)
-    except Exception as e:
-        print(f"Error in check_quest_status: {e}")
-        return web.json_response({'isCompleted': False, 'error': 'Internal server error'}, status=500)
-
-# Обновленный video_watched_handler
-async def video_watched_handler(request: web.Request):
-    """
-    POST /api/video/watched
-    Отмечает просмотр видео и проверяет выполнение MilestoneQuest.
-    """
-    try:
-        data = await request.json()
-        telegram_id = data.get("telegram_id")
-        video_id = data.get("video_id")
-    except Exception:
-        return web.json_response({"error": "Invalid JSON"}, status=400)
-
-    if not telegram_id or not video_id:
-        return web.json_response({"error": "Missing fields"}, status=400)
-
-    # 1. Увеличиваем общий счетчик просмотров видео в таблице `videos`
-    await db_manager.videos_db.increment_watched(video_id)
-
-    # 2. Увеличиваем счетчик просмотров ДЛЯ ПОЛЬЗОВАТЕЛЯ в новой таблице `user_counters`
-    new_count = await db_manager.counters_db.increment_counter(
-        telegram_id=telegram_id, 
-        counter_key='videos_watched'
-    )
-
-    # 3. Проверяем, выполнил ли пользователь квест
-    quest_result = await check_milestone_quest_completion(telegram_id, 'videos_watched', new_count)
-
-    return web.json_response({
-        "status": "ok",
-        "videos_watched_count": new_count,
-        "quest_completed": quest_result["is_completed"]
-    })
-
-async def save_user_to_db(user, timezone: str | None = None):
-    if not db_manager.users_db:
-        logger.warning("save_user_to_db: users_db not initialized")
-        return
-    await db_manager.users_db.add_user(
-        telegram_id=user.id,
-        username=getattr(user, "username", None),
-        first_name=getattr(user, "first_name", None),
-        last_name=getattr(user, "last_name", None),
-        language_code=getattr(user, "language_code", None),
-        timezone=timezone,
-        is_premium=getattr(user, "is_premium", False)
-    )
 
 async def set_main_commands(bot: Bot):
     commands = [
@@ -602,179 +107,18 @@ async def save_referral(new_user_id: int, ref_payload: str):
         return
     await db_manager.users_db.add_referral(referrer_id=ref_id, referral_id=new_user_id)
 
-async def fetch_bot_stats() -> str:
-    if not db_manager.users_db or not db_manager.users_db.pool:
-        return "DB not connected"
-        
-    async with db_manager.users_db.pool.acquire() as conn:
-        
-        # 1. СТАТИСТИКА ПОЛЬЗОВАТЕЛЕЙ
-        users = await conn.fetchval("SELECT count(*) FROM tg_users") or 0
-        today_users = await conn.fetchval("SELECT count(*) FROM tg_users WHERE created_at::date = current_date") or 0
-        refs = await conn.fetchval("""
-            SELECT count(*) 
-            FROM (SELECT unnest(referrals) FROM tg_users) s(id) 
-            WHERE id IS NOT NULL
-        """) or 0
-        
-        # 2. СТАТИСТИКА ВИДЕО (ПРОСМОТРЫ)
-        # Total watched (берется из таблицы videos, столбец watched)
-        total_watched = await conn.fetchval("SELECT COALESCE(SUM(watched), 0) FROM videos")
-        
-        # Watched Today (берется из daily_statistics, если менеджер статистики запускается ежедневно)
-        today_watched = await conn.fetchval(
-            "SELECT videos_watched FROM daily_statistics WHERE stat_date = current_date"
-        ) or 0
-        
-    stats_text = (
-    f"📊 <b>ОБЩАЯ СТАТИСТИКА БОТА</b>\n"
-    f"—————————————————————\n"
-    f"👤 <b>ПОЛЬЗОВАТЕЛИ</b>\n"
-    f"— Всего пользователей: <b>{users}</b>\n"
-    f"— Новых сегодня: <b>{today_users}</b>\n"
-    f"— Рефералов: <b>{refs}</b>\n"
-    f"—————————————————————\n"
-    f"🎥 <b>ВИДЕО / РЕКЛАМА</b>\n"
-    f"— Просмотров всего: <b>{total_watched}</b>\n"
-    f"— Просмотров сегодня: <b>{today_watched}</b>\n"
-    )
-    return stats_text
+
 
 
 
 # -------------------- Функция отправки бродкаста --------------------
-async def create_broadcast(data: dict):
-    name = data["name"]
-    media_file_id = data.get("media_file_id") 
-    media_type = data.get("media_type")
-    title = data["title"]
-    text = data["text"]
-    button_text = data["button_text"]
-    link=data["button_link"]
-
-    
-    await db_manager.mailing_db.add_broadcast(name, title, text, media_file_id, media_type, button_text, link)
 
 
 # -------------------- Функция отправки бродкаста --------------------
-async def send_broadcast(data: dict):
-    name = data["name"] # Используем name, чтобы найти рассылку
 
-    # 1. Находим данные рассылки по имени
-    mailing_data = await db_manager.mailing_db.get_mailing_by_name(name)
-    
-    if not mailing_data:
-        print(f"Ошибка: Рассылка с именем '{name}' не найдена в базе данных.")
-        return None
-    
-    # ID шаблона (повторно используемый контент)
-    mailing_id = mailing_data['id']
-    
-    try:
-        run_id = await db_manager.mailing_db.start_new_run(mailing_id)
-    except Exception as e:
-        logger.error(f"Не удалось создать run_id для mailing_id {mailing_id}: {e}")
-        return None
-    
-
-    # 2. Извлекаем данные из БД
-    broadcast_id = mailing_data['id']
-    media_file_id = mailing_data['media_url']
-    media_type = mailing_data['media_type']  # <-- Используем тип из БД
-    title = mailing_data['title']
-    text = mailing_data['text']
-    button_text = mailing_data['button_text']
-    link = mailing_data['button_link']
-
-    # --- Подготовка к рассылке ---
-    user_ids = await db_manager.get_all_users() 
-    caption = f"{title}\n{text}"
-    
-    # Создание клавиатуры
-    markup = InlineKeyboardMarkup(
-        inline_keyboard=[[
-            InlineKeyboardButton(text=button_text, url=link)
-        ]])
-    
-    for user_id in user_ids:
-        try:
-            # 3. Отправка в зависимости от media_type
-            if media_file_id and media_type:
-                
-                # Используем тип, сохраненный в БД, для выбора правильного метода
-                if media_type == ContentType.PHOTO.value:
-                    await bot.send_photo(user_id, photo=media_file_id, caption=caption, reply_markup=markup)
-                elif media_type == ContentType.VIDEO.value:
-                    await bot.send_video(user_id, video=media_file_id, caption=caption, reply_markup=markup)
-                elif media_type == ContentType.ANIMATION.value:
-                    await bot.send_animation(user_id, animation=media_file_id, caption=caption, reply_markup=markup)
-                elif media_type == ContentType.DOCUMENT.value:
-                    await bot.send_document(user_id, document=media_file_id, caption=caption, reply_markup=markup)
-                else:
-                    # Если тип медиа не распознан, отправляем как документ (наиболее универсально)
-                    await bot.send_document(user_id, document=media_file_id, caption=caption, reply_markup=markup)
-                    
-            else:
-                # Если медиафайла нет, отправляем простое текстовое сообщение
-                await bot.send_message(user_id, text=caption, reply_markup=markup)
-
-            await db_manager.mailing_db.log_stat(run_id, user_id, "sent")
-            
-        except Exception as e:
-            await db_manager.mailing_db.log_stat(run_id, user_id, "failed")
-            print(f"Не удалось отправить {user_id}: {e}")
-
-    return run_id
 
 # ---------- Webapp endpoints ----------
-async def get_random_video(request: web.Request):
-    """
-    GET /api/video/random?initData=<initData>
-    Проверяет initData (если доступна проверка). Возвращает JSON с полным video_url.
-    """
-    # get initData from query (frontend should pass Telegram.WebApp.initData)
-    init_data = request.query.get("initData")
-    if not init_data:
-        return web.json_response({"error": "Missing initData"}, status=400)
 
-    # validate initData if helper available
-    if check_webapp_signature:
-        try:
-            valid = check_webapp_signature(bot.token, init_data)
-        except Exception:
-            valid = False
-    else:
-        # Если нет helper-а — логим и временно разрешаем (в проде лучше иметь проверку)
-        logger.warning("check_webapp_signature not available in aiogram — skipping initData validation")
-        valid = True
-
-    if not valid:
-        return web.json_response({"error": "Invalid initData"}, status=403)
-
-    # Получаем случайное видео из БД
-    video = await db_manager.videos_db.get_random_video()
-    if not video:
-        return web.json_response({"error": "No videos found"}, status=404)
-
-    vurl = video["video_url"]
-    # если в БД относительный путь, делаем абсолютный на основе request
-    if not vurl.startswith("http://") and not vurl.startswith("https://"):
-        scheme = "https" # Принудительно ставим https, так как у нас есть SSL
-        host = request.headers.get("Host")
-        
-        # Гарантируем, что путь начинается с ОДНОГО слэша
-        path = vurl if vurl.startswith("/") else f"/{vurl}"
-        
-        # Убираем возможный слэш в конце хоста и склеиваем
-        vurl = f"{scheme}://{host.rstrip('/')}{path}"
-
-    logger.info(f"Sending video URL to frontend: {vurl}") # Добавим лог в консоль сервера
-
-    return web.json_response({
-        "id": video["id"],
-        "title": video["title"],
-        "video_url": vurl
-    })
 
 
 # ---------- Keyboards ----------
@@ -842,41 +186,6 @@ async def mark_visited_handler(request: web.Request):
 
 
 # --- НОВЫЙ ОБРАБОТЧИК: get_quests_statuses ---
-async def get_quests_statuses(request: web.Request):
-    """
-    GET /api/quest/statuses?telegram_id=<id>
-    Возвращает JSON с текущими статусами квестов пользователя.
-    """
-    telegram_id_str = request.query.get("telegram_id")
-    if not telegram_id_str:
-        return web.json_response({"error": "Missing telegram_id"}, status=400)
-    
-    try:
-        telegram_id = int(telegram_id_str)
-    except ValueError:
-        return web.json_response({"error": "Invalid telegram_id"}, status=400)
-        
-    # 1. Получаем статусы квестов
-    quests_statuses = await db_manager.quests_db.get_user_quest_statuses(telegram_id)
-    
-    # 2. Получаем баланс
-    user = await db_manager.users_db.get_user_by_telegram_id(telegram_id) # Предполагается, что такой метод есть
-    if not user:
-        return web.json_response({"error": "User not found"}, status=404)
-    balance = float(user['balance'])
-    
-    # 3. Получаем текущий счетчик просмотров видео
-    videos_watched_count = await db_manager.counters_db.get_counter(telegram_id, 'videos_watched')
-    
-    # 4. Формируем ответ
-    return web.json_response({
-        "status": "ok",
-        "balance": balance,
-        "quests": quests_statuses,
-        "counters": {
-            "videos_watched": videos_watched_count
-        }
-    })
 
 
 @dp.message(F.text == "/start")
@@ -1197,6 +506,7 @@ async def start_app():
     app.router.add_post('/api/quest/check', check_follow_quest_status_handler) # Для FollowQuest
     app.router.add_post('/api/quest/complete', complete_quest_handler)
     app.router.add_get('/api/quest/get_list', get_quest_config_list)
+    app.router.add_post('/api/quest/verify', verify_quest_handler)
 
     app.router.add_post(f"{WEBHOOK_PATH}/telegram/{{secret}}", handle_webhook)
 

@@ -22,15 +22,13 @@ class Navigation {
         });
     }
 
-    navigateTo(pageId, args) {
+    navigateTo(pageId) {
         const navButtons = document.querySelectorAll('.nav-btn');
         const pages = document.querySelectorAll('.page');
         
-        // Remove active class
         navButtons.forEach(btn => btn.classList.remove('active'));
         pages.forEach(page => page.classList.remove('active'));
         
-        // Add active class
         const targetButton = document.querySelector(`[data-page="${pageId}"]`);
         const targetPage = document.getElementById(pageId);
         
@@ -38,6 +36,27 @@ class Navigation {
             targetButton.classList.add('active');
             targetPage.classList.add('active');
             this.currentPage = pageId;
+
+            // Вместо того чтобы знать ВСЁ о квестах, 
+            // навигация просто сообщает приложению о смене страницы
+            this.onPageChanged(pageId); 
+        }
+    }
+    
+    onPageChanged(pageId) {
+        // Если перешли на квесты — просим главный класс их обновить
+        if (pageId === 'quests') {
+            this.app.loadAndRenderQuests();
+        }
+
+        // Если перешли на cash — обновляем баланс
+        if (pageId === 'cash') {
+            this.app.updateUI(); 
+        }
+
+        // Haptic feedback
+        if (this.app.tg.HapticFeedback) {
+            this.app.tg.HapticFeedback.selectionChanged();
         }
     }
 }
