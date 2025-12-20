@@ -4,8 +4,37 @@ from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter, TelegramBadRequest
 
+# Импортируем конфиг для получения списка админов
+from config import ADMIN_IDS
+
 # Настройка логгера
 logger = logging.getLogger(__name__)
+
+def is_admin(user_id: int) -> bool:
+    """Проверяет, является ли пользователь администратором."""
+    return int(user_id) in ADMIN_IDS
+
+async def save_referral(new_user_id: int, ref_payload: str, db_manager):
+    """
+    Записывает информацию о реферале. 
+    Теперь принимает db_manager как аргумент.
+    """
+    if not db_manager.users_db:
+        logger.warning("save_referral: users_db not initialized")
+        return
+    try:
+        ref_id = int(ref_payload)
+        # Если пользователь пытается пригласить сам себя
+        if ref_id == new_user_id:
+            return
+    except (ValueError, TypeError):
+        # Payload не числовой (например, строковая метка)
+        return
+        
+    try:
+        await db_manager.users_db.add_referral(referrer_id=ref_id, referral_id=new_user_id)
+    except Exception as e:
+        logger.error(f"Ошибка при сохранении реферала: {e}")
 
 async def send_broadcast(data: dict, bot: Bot, db_manager):
     """
@@ -16,7 +45,6 @@ async def send_broadcast(data: dict, bot: Bot, db_manager):
         logger.error("send_broadcast: В данных отсутствует 'name'")
         return None
 
-    # 1. Находим данные рассылки по имени
     mailing_data = await db_manager.mailing_db.get_mailing_by_name(name)
     if not mailing_data:
         logger.error(f"Рассылка с именем '{name}' не найдена в базе данных.")
@@ -29,9 +57,8 @@ async def send_broadcast(data: dict, bot: Bot, db_manager):
         logger.error(f"Не удалось создать run_id: {e}")
         return None
 
-    # 2. Подготовка контента
     media_file_id = mailing_data.get('media_url')
-    media_type = mailing_data.get('media_type')  # 'photo', 'video', 'animation', 'document'
+    media_type = mailing_data.get('media_type')
     title = mailing_data.get('title', '')
     text = mailing_data.get('text', '')
     button_text = mailing_data.get('button_text')
@@ -45,8 +72,7 @@ async def send_broadcast(data: dict, bot: Bot, db_manager):
             InlineKeyboardButton(text=button_text, url=link)
         ]])
 
-    # 3. Получаем список всех ID пользователей
-    # Важно: убедись, что в твоем db_manager есть такой метод
+    # Метод должен возвращать список ID (например, [123, 456])
     user_ids = await db_manager.users_db.get_all_user_ids() 
     
     count = 0
@@ -72,17 +98,13 @@ async def send_broadcast(data: dict, bot: Bot, db_manager):
                 await asyncio.sleep(1)
 
         except TelegramForbiddenError:
-            # Пользователь заблокировал бота
             await db_manager.mailing_db.log_stat(run_id, user_id, "blocked")
         except TelegramRetryAfter as e:
-            # Слишком частые запросы (Flood limit)
             await asyncio.sleep(e.retry_after)
-            # Можно повторить попытку один раз
             try:
                 await bot.send_message(user_id, text=caption, reply_markup=markup, parse_mode="HTML")
             except: pass 
         except TelegramBadRequest as e:
-            # Ошибка в ID файла или тексте
             logger.error(f"Bad Request для {user_id}: {e}")
             await db_manager.mailing_db.log_stat(run_id, user_id, "error_content")
         except Exception as e:
@@ -109,14 +131,9 @@ async def fetch_bot_stats(db_manager) -> str:
         return "❌ Ошибка: Подключение к БД отсутствует"
         
     async with db_manager.users_db.pool.acquire() as conn:
-        # Статистика пользователей
         users_count = await conn.fetchval("SELECT count(*) FROM tg_users") or 0
         today_users = await conn.fetchval("SELECT count(*) FROM tg_users WHERE created_at::date = current_date") or 0
-        
-        # Рефералы (предполагаем наличие referrer_id)
         refs_count = await conn.fetchval("SELECT count(*) FROM tg_users WHERE referrer_id IS NOT NULL") or 0
-        
-        # Видео
         total_watched = await conn.fetchval("SELECT COALESCE(SUM(watched), 0) FROM videos") or 0
         today_watched = await conn.fetchval(
             "SELECT videos_watched FROM daily_statistics WHERE stat_date = current_date"
