@@ -89,6 +89,43 @@
     font-size: var(--font-size-sm);
 }
 
+
+/* Новая обертка для заголовка и счетчика */
+.referral-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center; /* Центровка по вертикали */
+    width: 100%;
+}
+
+/* Стили большого счетчика справа */
+.progress-counter-large {
+    font-size: 24px; /* Делаем крупнее */
+    font-weight: 800;
+    color: var(--primary-color); /* Золотой или акцентный цвет */
+    font-family: var(--font-accent); /* Если хочешь шрифт как у заголовков */
+}
+
+/* Стили для текста слева */
+.referral-text-block {
+    flex: 1;
+}
+
+/* Прогресс-бар на отдельной строке */
+.referral-progress-standalone {
+    width: 100%;
+    margin: 8px 0;
+}
+
+.referral-progress-standalone .progress-bar-container {
+    height: 8px; /* Немного увеличим высоту для красоты */
+    background: var(--bg-2);
+    border-radius: 4px;
+}
+
+/* Убираем старый класс, если он остался */
+.referral-progress-wrapper { display: none; }
+
 /* === СЕКЦИЯ ОСНОВНЫХ КВЕСТОВ (LIST) === */
 
 .quests-list {

@@ -7,7 +7,7 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter, Teleg
 from aiogram.fsm.context import FSMContext
 
 # Локальные импорты
-from init_bot import bot # Импортируем наш объект бота
+from init_bot import bot, dp # Импортируем наш объект бота
 from db import db_manager
 from utils.helpers import (
     is_admin, fetch_bot_stats, create_broadcast, send_broadcast
@@ -18,6 +18,19 @@ from keyboards.inline import admin_keyboard
 # Создаем роутер для админ-панели
 router = Router()
 logger = logging.getLogger(__name__)
+
+
+@router.callback_query(F.data == "admin_main")
+async def admin_main_menu(callback_query: types.CallbackQuery, state: FSMContext):
+    if not is_admin(callback_query.from_user.id):
+        return
+    await state.clear()
+    await callback_query.message.edit_text(
+        "🛠 <b>Админ-панель управления</b>\n\nВыберите нужное действие:",
+        reply_markup=admin_keyboard(),
+        parse_mode="HTML"
+    )
+    await callback_query.answer()
 
 # --- СТАТИСТИКА ---
 
@@ -87,39 +100,79 @@ async def start_broadcast(user_ids, message_text, db_manager, run_id):
 
     return success_count, blocked_count, error_count
 
+
+@router.callback_query(F.data == "start_broadcast")
+async def start_broadcast_menu(callback_query: types.CallbackQuery):
+    """
+    По нажатию на 'начать рассылку' показываем список сохраненных шаблонов
+    """
+    if not is_admin(callback_query.from_user.id):
+        await callback_query.answer("У вас нет прав", show_alert=True)
+        return
+
+    # Получаем список всех созданных рассылок из БД
+    mailings = await db_manager.mailing_db.get_all_broadcast_names()
+    
+    if not mailings:
+        await callback_query.message.edit_text(
+            "❌ У вас еще нет созданных шаблонов рассылок.",
+            reply_markup=admin_keyboard()
+        )
+        return
+
+    kb = InlineKeyboardMarkup(inline_keyboard=[])
+    for m in mailings:
+        # m['name'] - техническое имя рассылки
+        kb.inline_keyboard.append([
+            InlineKeyboardButton(text=f"🚀 {m['name']}", callback_data=f"run_broadcast:{m['id']}")
+        ])
+    
+    kb.inline_keyboard.append([InlineKeyboardButton(text="« Назад", callback_data="admin_main")])
+
+    await callback_query.message.edit_text(
+        "Выберите шаблон рассылки для запуска:",
+        reply_markup=kb
+    )
+    await callback_query.answer()
+
 @router.callback_query(F.data.startswith("run_broadcast:"))
 async def run_broadcast_callback(callback_query: types.CallbackQuery):
     user_id = callback_query.from_user.id
+    # Используем твою функцию проверки админа
     if not is_admin(user_id):
         await callback_query.answer("У вас нет прав", show_alert=True)
         return
         
-    name = callback_query.data.split(":")[1]
-    await callback_query.message.edit_text(f"⏳ Рассылка '{name}' запущена. Ожидайте отчет...")
+    id = int(callback_query.data.split(":")[1])
+    await callback_query.message.edit_text(f"⏳ Рассылка  запущена в фоне.\nВы получите отчет сразу по завершении.")
+
+    # Обертка для фоновой задачи, чтобы собрать статистику ПОСЛЕ завершения
+    async def background_mailing():
+        try:
+            run_id = await send_broadcast({"id": id}, bot, db_manager)
+            if run_id:
+                stats = await db_manager.mailing_db.get_stats(run_id)
+                mailing_data = await db_manager.mailing_db.get_mailing_by_run_id(run_id)
+                
+                title = mailing_data['title'] if mailing_data else "Mailing"
+                report = (
+                    f"🎉 <b>Рассылка #{run_id} завершена!</b>\n"
+                    f"<b>Шаблон:</b> <code>{title}</code>\n"
+                    f"—————————————————————\n"
+                    f"✅ Успешно: <b>{stats.get('sent', 0)}</b>\n"
+                    f"🚫 Блоки: <b>{stats.get('blocked', 0)}</b>\n"
+                    f"⚠️ Ошибки: <b>{stats.get('error', 0)}</b>\n"
+                    f"🖱 Клики: <b>{stats.get('clicked', 0)}</b>"
+                )
+                await bot.send_message(user_id, report, parse_mode="HTML")
+        except Exception as e:
+            logger.exception(f"Критическая ошибка в фоновой рассылке ")
+            await bot.send_message(user_id, f"⚠️ Рассылка прервана ошибкой: {e}")
+
+    # Запускаем как независимую задачу
+    asyncio.create_task(background_mailing())
     await callback_query.answer()
-    
-    try:
-        # Передаем bot и db_manager в функцию отправки
-        run_id = await send_broadcast({"name": name}, bot, db_manager)
-        
-        if run_id:
-            mailing_data = await db_manager.mailing_db.get_mailing_by_run_id(run_id) 
-            stats = await db_manager.mailing_db.get_stats(run_id)
-            
-            title = mailing_data['title'] if mailing_data else "Без названия"
-            report = (
-                f"🎉 <b>Отчет о запуске #{run_id}</b>\n"
-                f"<b>Шаблон:</b> <code>{title}</code>\n"
-                f"—————————————————————\n"
-                f"✅ <b>Успешно:</b> <b>{stats.get('sent', 0)}</b>\n"
-                f"❌ <b>Ошибки/Блоки:</b> <b>{stats.get('failed', 0) + stats.get('blocked', 0)}</b>\n"
-                f"➡️ <b>Клики:</b> <b>{stats.get('clicked', 0)}</b>\n"
-            )
-            await callback_query.message.answer(report, parse_mode="HTML")
-            
-    except Exception as e:
-        logger.exception(f"Ошибка рассылки {name}")
-        await callback_query.message.answer(f"⚠️ Ошибка: {e}")
+
 
 # --- СОЗДАНИЕ НОВОЙ РАССЫЛКИ (FSM) ---
 

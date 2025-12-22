@@ -121,6 +121,11 @@ async def verify_quest_handler(request: web.Request):
     
     if config['type'] == 'follow':
         is_valid = await check_subscription_status(telegram_id, config['channel_username'], request.app['http_session'])
+        
+        if not is_valid:
+            # СБРОС СТАТУСА: если не подписан, ставим статус обратно в None или начальный
+            await db_manager.quests_db.set_quest_status(telegram_id, quest_id, 'started') # или None
+            return web.json_response({"isCompleted": False, "resetStatus": True})
     
     elif config['type'] == 'milestone':
         if current_status == 'ready_to_claim':

@@ -2,7 +2,7 @@ import asyncio
 import logging
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter, TelegramBadRequest
+from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter, TelegramAPIError, TelegramBadRequest
 
 # Импортируем конфиг для получения списка админов
 from config import ADMIN_IDS
@@ -38,80 +38,76 @@ async def save_referral(new_user_id: int, ref_payload: str, db_manager):
 
 async def send_broadcast(data: dict, bot: Bot, db_manager):
     """
-    Полный цикл рассылки: получение данных, отправка с лимитами, логирование.
+    Безопасная рассылка с поддержкой медиа и фоновым выполнением.
     """
-    name = data.get("name")
-    if not name:
-        logger.error("send_broadcast: В данных отсутствует 'name'")
-        return None
-
-    mailing_data = await db_manager.mailing_db.get_mailing_by_name(name)
-    if not mailing_data:
-        logger.error(f"Рассылка с именем '{name}' не найдена в базе данных.")
+    id = data.get("id")
+    if not id:
+        logger.error("send_broadcast: В данных отсутствует 'id'")
         return None
     
-    mailing_id = mailing_data['id']
-    try:
-        run_id = await db_manager.mailing_db.start_new_run(mailing_id)
-    except Exception as e:
-        logger.error(f"Не удалось создать run_id: {e}")
+    run_id = await db_manager.mailing_db.start_new_run(id)
+
+    mailing_data = await db_manager.mailing_db.get_mailing_by_run_id(id)
+    if not mailing_data:
         return None
+    
 
     media_file_id = mailing_data.get('media_url')
     media_type = mailing_data.get('media_type')
-    title = mailing_data.get('title', '')
-    text = mailing_data.get('text', '')
-    button_text = mailing_data.get('button_text')
-    link = mailing_data.get('button_link')
-
-    caption = f"<b>{title}</b>\n\n{text}" if title else text
+    caption = f"<b>{mailing_data['title']}</b>\n\n{mailing_data['text']}" if mailing_data.get('title') else mailing_data.get('text', '')
     
+    link = mailing_data['button_link']
+
+    if link.startswith('@'):
+            link = f"https://t.me/{link[1:]}"
+
     markup = None
-    if button_text and link:
+    if mailing_data.get('button_text') and mailing_data.get('button_link'):
         markup = InlineKeyboardMarkup(inline_keyboard=[[
-            InlineKeyboardButton(text=button_text, url=link)
+            InlineKeyboardButton(text=mailing_data['button_text'], url=link)
         ]])
 
-    # Метод должен возвращать список ID (например, [123, 456])
-    user_ids = await db_manager.users_db.get_all_user_ids() 
+    # Берем только тех, кто не заблокировал бота (is_alive=True)
+    user_ids = await db_manager.users_db.get_all_alive_user_ids() 
     
-    count = 0
     for user_id in user_ids:
         try:
             if media_file_id and media_type:
                 if media_type == 'photo':
-                    await bot.send_photo(user_id, photo=media_file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
+                    await bot.send_photo(user_id, photo=media_file_id, caption=caption, reply_markup=markup)
                 elif media_type == 'video':
-                    await bot.send_video(user_id, video=media_file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
+                    await bot.send_video(user_id, video=media_file_id, caption=caption, reply_markup=markup)
                 elif media_type == 'animation':
-                    await bot.send_animation(user_id, animation=media_file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
+                    await bot.send_animation(user_id, animation=media_file_id, caption=caption, reply_markup=markup)
                 else:
-                    await bot.send_document(user_id, document=media_file_id, caption=caption, reply_markup=markup, parse_mode="HTML")
+                    await bot.send_document(user_id, document=media_file_id, caption=caption, reply_markup=markup)
             else:
-                await bot.send_message(user_id, text=caption, reply_markup=markup, parse_mode="HTML")
+                await bot.send_message(user_id, text=caption, reply_markup=markup)
 
             await db_manager.mailing_db.log_stat(run_id, user_id, "sent")
-            count += 1
-            
-            # Anti-flood: не более 30 сообщений в секунду
-            if count % 25 == 0:
-                await asyncio.sleep(1)
+            # Пауза 0.05 сек = ~20 сообщений в сек (безопасно для TG)
+            await asyncio.sleep(0.05) 
 
         except TelegramForbiddenError:
+            # Помечаем юзера "мертвым", чтобы не слать ему в следующий раз
+            await db_manager.users_db.update_user_status(user_id, is_alive=False)
             await db_manager.mailing_db.log_stat(run_id, user_id, "blocked")
+        
         except TelegramRetryAfter as e:
+            # Если словили лимит — ждем и пробуем еще раз ОДИН раз
             await asyncio.sleep(e.retry_after)
             try:
-                await bot.send_message(user_id, text=caption, reply_markup=markup, parse_mode="HTML")
-            except: pass 
-        except TelegramBadRequest as e:
-            logger.error(f"Bad Request для {user_id}: {e}")
-            await db_manager.mailing_db.log_stat(run_id, user_id, "error_content")
-        except Exception as e:
-            logger.error(f"Не удалось отправить {user_id}: {e}")
-            await db_manager.mailing_db.log_stat(run_id, user_id, "failed")
-
+                await bot.send_message(user_id, text=caption, reply_markup=markup)
+                await db_manager.mailing_db.log_stat(run_id, user_id, "sent")
+            except:
+                await db_manager.mailing_db.log_stat(run_id, user_id, "failed")
+        
+        except (TelegramBadRequest, TelegramAPIError) as e:
+            logger.error(f"Ошибка API для {user_id}: {e}")
+            await db_manager.mailing_db.log_stat(run_id, user_id, "error")
+            
     return run_id
+
 
 async def create_broadcast(data: dict, db_manager):
     """Создает шаблон рассылки в БД"""

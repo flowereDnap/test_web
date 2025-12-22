@@ -628,6 +628,8 @@ async def send_broadcast(data: dict):
     button_text = mailing_data['button_text']
     link = mailing_data['button_link']
 
+    
+
     # --- Подготовка к рассылке ---
     user_ids = await db_manager.get_all_users() 
     caption = f"{title}\n{text}"

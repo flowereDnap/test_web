@@ -20,6 +20,7 @@ class UsersDBManager:
         self.pool = pool
 
     async def create_users_table(self):
+        """Создание таблицы пользователей и миграция для referrer_id"""
         query = """
         CREATE TABLE IF NOT EXISTS tg_users (
             telegram_id BIGINT PRIMARY KEY,
@@ -29,6 +30,7 @@ class UsersDBManager:
             language_code TEXT,
             timezone TEXT,
             is_premium BOOLEAN DEFAULT FALSE,
+            referrer_id BIGINT,
             referrals BIGINT[] DEFAULT '{}',
             is_alive BOOLEAN DEFAULT TRUE,
             logs JSONB DEFAULT '[]',
@@ -40,44 +42,88 @@ class UsersDBManager:
         """
         async with self.pool.acquire() as conn:
             await conn.execute(query)
+            # Принудительное добавление колонки, если таблица уже была создана ранее без нее
+            await conn.execute("ALTER TABLE tg_users ADD COLUMN IF NOT EXISTS referrer_id BIGINT;")
 
-    async def add_user(self, telegram_id, username=None, first_name=None, last_name=None, language_code=None, timezone=None, is_premium=False):
+    async def add_user(self, telegram_id, username=None, first_name=None, last_name=None, 
+                       language_code=None, timezone=None, is_premium=False, referrer_id=None):
+        """Добавление нового пользователя или обновление существующего"""
         query = """
-        INSERT INTO tg_users (telegram_id, username, first_name, last_name, language_code, timezone, is_premium)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (telegram_id) DO NOTHING;
+        INSERT INTO tg_users (
+            telegram_id, username, first_name, last_name, 
+            language_code, timezone, is_premium, referrer_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (telegram_id) DO UPDATE SET
+            username = EXCLUDED.username,
+            first_name = EXCLUDED.first_name,
+            last_name = EXCLUDED.last_name,
+            is_alive = TRUE;
         """
         async with self.pool.acquire() as conn:
-            await conn.execute(query, telegram_id, username, first_name, last_name, language_code, timezone, is_premium)
+            await conn.execute(query, telegram_id, username, first_name, last_name, 
+                               language_code, timezone, is_premium, referrer_id)
 
     async def get_user_by_telegram_id(self, telegram_id: int):
+        """Получение всех данных пользователя по ID"""
         query = "SELECT * FROM tg_users WHERE telegram_id = $1;"
         async with self.pool.acquire() as conn:
             return await conn.fetchrow(query, telegram_id)
 
+    async def get_all_user_ids(self):
+        """Получение списка ID всех активных пользователей для рассылки"""
+        query = "SELECT telegram_id FROM tg_users WHERE is_alive = TRUE;"
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query)
+            return [row['telegram_id'] for row in rows]
+        
+    async def get_all_alive_user_ids(self):
+        query = "SELECT telegram_id FROM tg_users WHERE is_alive = TRUE;"
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch(query)
+            return [row['telegram_id'] for row in rows]
+
     async def update_balance(self, telegram_id: int, amount: float):
+        """Изменение баланса пользователя"""
         query = "UPDATE tg_users SET balance = balance + $1 WHERE telegram_id = $2;"
         async with self.pool.acquire() as conn:
             await conn.execute(query, amount, telegram_id)
 
     async def add_referral(self, referrer_id: int, referral_id: int):
+        """Добавление ID приглашенного пользователя в список рефералов"""
         query = """
         UPDATE tg_users
-        SET referrals = COALESCE(referrals, ARRAY[]::BIGINT[]) || ARRAY[$1]::BIGINT[]
-        WHERE telegram_id = $2;
+        SET referrals = array_append(referrals, $1)
+        WHERE telegram_id = $2 AND NOT ($1 = ANY(referrals));
         """
         async with self.pool.acquire() as conn:
             await conn.execute(query, referral_id, referrer_id)
 
-    async def update_is_alive(self, telegram_id: int, is_alive: bool):
+    async def update_user_status(self, telegram_id: int, is_alive: bool):
+        """Обновление статуса (заблокировал бота или нет)"""
         query = "UPDATE tg_users SET is_alive = $1 WHERE telegram_id = $2;"
         async with self.pool.acquire() as conn:
             await conn.execute(query, is_alive, telegram_id)
 
     async def add_quest_done(self, telegram_id: int, quest_id: int):
-        query = "UPDATE tg_users SET quests_done = COALESCE(quests_done, ARRAY[]::BIGINT[]) || ARRAY[$1]::BIGINT[] WHERE telegram_id = $2;"
+        """Пометка квеста как выполненного в основной таблице пользователя"""
+        query = """
+        UPDATE tg_users 
+        SET quests_done = array_append(quests_done, $1) 
+        WHERE telegram_id = $2 AND NOT ($1 = ANY(quests_done));
+        """
         async with self.pool.acquire() as conn:
             await conn.execute(query, quest_id, telegram_id)
+
+    async def log_event(self, telegram_id: int, event_data: dict):
+        """Запись действия в логи пользователя"""
+        query = """
+        UPDATE tg_users 
+        SET logs = logs || $1::jsonb 
+        WHERE telegram_id = $2;
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(query, json.dumps([event_data]), telegram_id)
 
 # ------------------ VIDEOS ------------------
 class VideosDBManager:
@@ -212,10 +258,10 @@ class QuestStatusDBManager:
 
     async def set_quest_status(self, telegram_id: int, quest_id: str, status: str):
         """
-        Устанавливает статус квеста: 'initial', 'visited', 'ready_to_claim', 'completed'
+        Устанавливает статус квеста в правильную таблицу: user_quest_statuses
         """
         query = """
-        INSERT INTO user_quests (telegram_id, quest_id, status)
+        INSERT INTO user_quest_statuses (telegram_id, quest_id, status)
         VALUES ($1, $2, $3)
         ON CONFLICT (telegram_id, quest_id) 
         DO UPDATE SET status = EXCLUDED.status, updated_at = now();

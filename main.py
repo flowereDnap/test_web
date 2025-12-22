@@ -12,9 +12,7 @@ from config import (
     PORT, PROJ_ROOT
 )
 from db import db_manager
-
-# Импорт роутеров бота
-from handlers.comands import router as commands_router
+from handlers.commands import router as commands_router
 from handlers.admin_menu import router as admin_router
 
 # Импорт актуальных обработчиков API
@@ -27,10 +25,6 @@ from api.routes import (
     verify_quest_handler,
     get_quests_statuses  # Мы переименовали старый check_quest_status в это
 )
-
-# Подключаем роутеры бота
-dp.include_router(commands_router)
-dp.include_router(admin_router)
 
 # ---------- Жизненный цикл приложения ----------
 
@@ -45,12 +39,17 @@ async def on_shutdown(app):
     try:
         await bot.delete_webhook()
     except: pass
-    await app['http_session'].close()
-    await bot.session.close()
+    
+    # Закрываем сессию aiohttp приложения
+    if 'http_session' in app:
+        await app['http_session'].close()
+        
+    # КРИТИЧНО: Закрываем сессию самого бота aiogram
+    if bot.session:
+        await bot.session.close()
+        
     if db_manager.pool:
         await db_manager.close()
-    logger.info("Application shutdown complete.")
-
 # ---------- Обработка Webhook ----------
 
 async def handle_webhook(request: web.Request):
@@ -72,19 +71,23 @@ async def handle_webhook(request: web.Request):
     return web.Response(status=200, text="OK")
 
 async def setup_telegram():
-    webhook_url = f"{WEBHOOK_URL_FINAL}{WEBHOOK_PATH}/telegram/{WEBHOOK_SECRET_TOKEN}"
+    """
+    Настройка вебхука. 
+    Используем WEBHOOK_URL_FINAL как базовый адрес сервера.
+    """
+    # Убираем возможный лишний слэш в конце домена и в начале пути
+    base_url = WEBHOOK_URL_FINAL.rstrip('/')
+    path = WEBHOOK_PATH.lstrip('/')
+    
+    # Итоговый URL: https://domain.cc/webhook/SECRET_TOKEN
+    full_webhook_url = f"{WEBHOOK_URL_FINAL}"
+    
     await bot.set_webhook(
-        url=webhook_url,
+        url=full_webhook_url,
         secret_token=WEBHOOK_SECRET_TOKEN,
         drop_pending_updates=True
     )
-    
-    from aiogram.types import BotCommand
-    await bot.set_my_commands([
-        BotCommand(command="start", description="🏠 Главное меню"),
-        BotCommand(command="admin", description="👑 Админ-панель")
-    ])
-    logger.info(f"Webhook set: {webhook_url}")
+    logger.info(f"✅ Webhook successfully set to: {full_webhook_url}")
 
 # ---------- Middleware ----------
 
@@ -102,9 +105,13 @@ async def cors_middleware(request, handler):
 
 # ---------- Запуск сервера ----------
 
+
 async def start_app():
     # 1. БД
     await db_manager.setup()
+
+    dp.include_router(commands_router)
+    dp.include_router(admin_router)
 
     # 2. Приложение
     app = web.Application(middlewares=[cors_middleware])

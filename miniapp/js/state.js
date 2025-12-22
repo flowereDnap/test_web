@@ -15,12 +15,12 @@ class AppState {
             // Используем эндпоинт, который мы прописали в боте (/api/quest/statuses возвращает и баланс, и счетчики)
             const response = await fetch(`/api/quest/statuses?telegram_id=${userId}`);
             const data = await response.json();
+            console.log("ДАННЫЕ С СЕРВЕРА:", data); // ДОБАВЬ ЭТОТ ЛОГ
             
             if (data.status === 'ok') {
                 this.balance = parseFloat(data.balance) || 0;
                 this.counters = data.counters || {};
-                // Если в будущем бэк будет отдавать лимиты:
-                // this.todayCount = data.today_count;
+                this.maxCount = data.daily_limit || 10;
                 return true;
             }
         } catch (e) {
@@ -31,7 +31,12 @@ class AppState {
         return false;
     }
 
-    updateBalance(amount) {
+    addToBalance(amount) {
+
+        const reward = parseFloat(amount);
+        // Если награда 0 или меньше, или это не число — ничего не делаем
+        if (!reward || reward <= 0) return;
+
         this.balance = parseFloat(this.balance) + parseFloat(amount);
         this.save();
     }

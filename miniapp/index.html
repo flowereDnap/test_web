@@ -24,18 +24,24 @@
         <div id="quests" class="page">
         <div class="quests-container">             <h1 class="page-title text-center" data-i18n="quests.title">🎯 Задания</h1>
             <div class="referral-card">
-                <div class="referral-text-block">
-                    <p class="referral-subtitle">Увеличь лимит просмотров</p>
-                    <h3 class="referral-title">Пригласи друга!</h3>
+                <div class="referral-header-row">
+                    <div class="referral-text-block">
+                        <p class="referral-subtitle">Увеличь лимит просмотров</p>
+                        <h3 class="referral-title">Пригласи друга!</h3>
+                    </div>
+                    <div class="progress-counter-large">1/10</div>
                 </div>
-                <div class="referral-progress-wrapper">
+            
+                <div class="referral-progress-standalone">
                     <div class="progress-bar-container">
                         <div id="referral-progress" class="progress-bar" style="width: 10%;"></div>
                     </div>
-                    <span class="progress-counter">1/10</span>
                 </div>
+            
                 <div class="referral-actions">
-                    <button class="btn secondary" id="copy-link-btn">Скопировать ссылку</button>                     <button class="btn primary" id="invite-btn">Пригласить</button>                 </div>
+                    <button class="btn secondary" id="copy-link-btn">Скопировать ссылку</button>
+                    <button class="btn primary btn-pulse" id="invite-btn">Пригласить</button>
+                </div>
             </div>
 
             <div class="quests-list-header">
@@ -57,7 +63,7 @@
                 </div>
             </div>
 
-            <button class="earn-button" id="earn-btn">
+            <button class="earn-button btn-pulse" id="earn-btn">
                 <div class="earn-button-text">
                     <div class="earn-cta" data-i18n="cash.earn">Заработать</div>
                     <div class="earn-amount">$0.05</div>
@@ -111,7 +117,7 @@
         <div class="reward-popup" id="reward-popup">
         <div class="reward-emoji">🎉</div>
         <div class="reward-text" data-i18n="cash.earned">Заработано!</div>
-        <div class="reward-amount">+$0.05</div>
+        <div class="reward-amount" id="reward-amount-display">+$0.05</div>
     </div>
 
     <div class="modal-overlay" id="cashout-overlay">
@@ -158,7 +164,9 @@
         </button>
     </nav>
 
-        <script src="/assets/js/config.js"></script>
+    <div id="toast" class="toast"></div>
+
+    <script src="/assets/js/config.js"></script>
     <script src="/assets/js/i18n.js"></script>
     <script src="/assets/js/state.js"></script>
     <script src="/assets/js/video.js"></script>

@@ -8,7 +8,6 @@ router = Router()
 
 # Импортируем менеджер базы данных и бота
 from db import db_manager
-from init_bot import bot 
 from utils.helpers import is_admin, save_referral, save_user_to_db
 from keyboards.inline import admin_keyboard, user_keyboard
 

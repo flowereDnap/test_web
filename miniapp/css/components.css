@@ -247,3 +247,28 @@
     stroke-linecap: round;
     transition: stroke-dasharray 0.3s linear;
 }
+
+
+/* Анимация мигания и пульсации */
+@keyframes buttonPulse {
+    0% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+    50% {
+        transform: scale(1.05); /* Небольшое увеличение */
+        filter: brightness(1.2); /* Легкое "мигание" (осветление) */
+    }
+    100% {
+        transform: scale(1);
+        filter: brightness(1);
+    }
+}
+
+/* Класс, который можно вешать на кнопки */
+.btn-pulse {
+    animation: buttonPulse 2s infinite ease-in-out;
+    /* Убедимся, что трансформация не конфликтует с другими стилями */
+    display: inline-flex; 
+    will-change: transform, filter;
+}

@@ -75,9 +75,11 @@ class MiniApp {
         try {
             // Исправленный эндпоинт из твоего бота
             const serverStatuses = await this.apiRequest('/quest/statuses', 'GET');
-            
+            console.log('Статусы из БД:', serverStatuses);
             // Инициализация классов из quests.js
-            this.allQuestsData = await initQuests(serverStatuses, this);
+            const statusesArray = serverStatuses.quests; 
+        
+            this.allQuestsData = await initQuests(statusesArray, this);
             renderQuestList(this.allQuestsData);
             setupQuestHandlers(this, this.allQuestsData);
         } catch (e) {
@@ -104,17 +106,12 @@ class MiniApp {
 
         // 2. Кнопка "Увеличить Лимит"
         document.getElementById('add-limit-btn')?.addEventListener('click', () => {
-            this.showToast('Задания для увеличения лимита скоро появятся!', 'info');
+            this.navigation.navigateTo('quests');
         });
 
         // 3. Кнопка "ВЫВЕСТИ"
         document.getElementById('cash-out-btn')?.addEventListener('click', () => {
-            // Если у тебя инициализирован класс Cashout в cashout.js
-            if (window.cashout) {
-                window.cashout.open(); 
-            } else {
-                this.showToast('Модуль вывода загружается...', 'info');
-            }
+            showCashoutModal();
         });
 
         // 4. Реферальные кнопки (Квесты)
@@ -242,13 +239,25 @@ class MiniApp {
     }
 
     updateUI() {
-        document.querySelectorAll('.balance-amount').forEach(el => {
-            el.textContent = this.state.getBalance().toFixed(2);
-        });
-
-        const videoCounter = document.getElementById('video-counter');
-        if (videoCounter) {
-            videoCounter.textContent = this.state.getCounter('videos_watched');
+        // 1. Обновляем "Сегодня заработано"
+        const todayEarned = document.getElementById('balance-value');
+        if (todayEarned) {
+            todayEarned.textContent = this.state.getCounter('today_earned')?.toFixed(2) || "0.00";
+        }
+    
+        // 2. Обновляем "Общий баланс"
+        const totalEarned = document.getElementById('total-earned');
+        if (totalEarned) {
+            // Если в state.js баланс возвращается числом, пишем его
+            totalEarned.textContent = `$${this.state.getBalance().toFixed(2)}`;
+        }
+    
+        // 3. Обновляем счетчик просмотров (1/10)
+        const todayCount = document.getElementById('today-count');
+        if (todayCount) {
+            const watched = this.state.getCounter('videos_watched') || 0;
+            const limit = this.state.getCounter('daily_limit') || 10;
+            todayCount.textContent = `${watched}/${limit}`;
         }
     }
 

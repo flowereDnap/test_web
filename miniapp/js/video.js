@@ -8,6 +8,7 @@ class VideoPlayer {
         this.progressBar = document.getElementById('progress-bar');
         this.timerCount = document.getElementById('timer-count');
         this.timerCircle = document.getElementById('timer-progress');
+        this.timerBtn = document.getElementById('video-timer');
         this.canSkip = false;
         this.watchedPercentage = 0;
         this.currentVideo = null;   
@@ -27,6 +28,14 @@ class VideoPlayer {
                 this.handleUnfinishedClose();
             }
         });
+
+        if (this.timerBtn) {
+            this.timerBtn.addEventListener('click', () => {
+                if (this.canSkip) {
+                    this.close(true);
+                }
+            });
+        }
 
         this.video.addEventListener('seeking', () => {
             if (this.video.currentTime > (this.video.dataset.maxTime || 0)) {
@@ -90,6 +99,12 @@ class VideoPlayer {
 
         this.rewardClaimed = false;
 
+        if (this.timerBtn) this.timerBtn.classList.remove('finished');
+        if (this.timerCount) {
+            this.timerCount.innerHTML = this.requiredTime;
+            this.timerCount.style.fontSize = ""; // Возвращаем размер шрифта
+        }
+
         try {
             await this.loadRandomVideo();
         } catch {
@@ -115,6 +130,7 @@ class VideoPlayer {
         this.overlay.classList.remove('active');
         this.video.pause();
         this.video.src = ""; // Очистка ресурса
+        this.app.updateUI();
     }
 
     onProgress() {
@@ -126,22 +142,39 @@ class VideoPlayer {
         if (remaining === 0 && !this.rewardClaimed) {
             this.canSkip = true;
             this.rewardClaimed = true; // Блокируем повторный вызов
-            this.notifyBackendWatched(); // Отправляем запрос на награду
-            
-            // Опционально: виброотклик, что награда получена
-            if (window.Telegram?.WebApp?.HapticFeedback) {
-                window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
-            }
+            this.handleVideoSuccess(); // Отправляем запрос на награду   
         }
         
         // Твоя старая логика прогресс-бара
         if (this.video.duration) {
-        this.watchedPercentage = (this.video.currentTime / this.video.duration) * 100;
-        if (this.progressBar) this.progressBar.style.width = this.watchedPercentage + '%';
+            this.watchedPercentage = (this.video.currentTime / this.video.duration) * 100;
+            if (this.progressBar) this.progressBar.style.width = this.watchedPercentage + '%';
+        }   
     }
+
+    handleVideoSuccess() {
+        // 1. Меняем внешний вид кнопки таймера
+        if (this.timerBtn) this.timerBtn.classList.add('finished');
+        if (this.timerCount) {
+            this.timerCount.innerHTML = '➜'; // Стрелочка
+            this.timerCount.style.fontSize = '24px';
+        }
+
+        // 2. Отправляем данные на сервер
+        this.notifyBackendWatched();
+
+        // 3. Обратная связь
+        if (window.Telegram?.WebApp?.HapticFeedback) {
+            window.Telegram.WebApp.HapticFeedback.notificationOccurred('success');
+        }
+        
+        // 4. Показываем всплывашку с наградой (из твоего app.js)
+        this.app.showRewardPopup(0.05);
     }
 
     updateTimerUI(seconds) {
+        if (this.canSkip && seconds === 0) return;
+
         if (this.timerCount) this.timerCount.innerText = seconds;
         
         // Рассчет круга: (остаток / всего) * 100
@@ -171,11 +204,14 @@ class VideoPlayer {
 
             if (!videoId || !userId) return;
 
-            await fetch(`${backend}/api/video/watched`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ video_id: Number(videoId), telegram_id: Number(userId) })
+            await this.app.apiRequest('/video/watched', 'POST', { 
+                video_id: Number(videoId) 
             });
+
+            const currentWatched = this.app.state.getCounter('videos_watched');
+            this.app.state.counters['videos_watched'] = currentWatched + 1;
+            this.app.state.addToBalance(0.05);
+            
         } catch (err) {
             console.error('Failed to notify backend about watched video:', err);
         }

@@ -214,3 +214,28 @@
     .earn-cta{ font-size: var(--font-size-xs); }
     .stat-label{ font-size: 9px; }
 }
+
+#video-timer.finished {
+    background: #4CAF50; /* Зеленый цвет готовности */
+    border-color: #4CAF50;
+    cursor: pointer;
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+    transform: scale(1.1);
+    transition: all 0.3s ease;
+}
+
+#video-timer.finished #timer-count {
+    color: white;
+    font-weight: bold;
+}
+
+/* Анимация пульсации, чтобы юзер понял, что туда надо жать */
+#video-timer.finished {
+    animation: skip-pulse 1.5s infinite;
+}
+
+@keyframes skip-pulse {
+    0% { transform: scale(1.1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1.1); }
+}

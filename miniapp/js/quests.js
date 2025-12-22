@@ -93,10 +93,14 @@ class FollowQuest extends Quest {
                 this.isCompleted = true;
                 this.vibrate();
                 this.updateButtonUI(btn);
-                app.state.updateBalance(apiResult.reward || parseFloat(this.reward));
+                app.state.addToBalance(apiResult.reward);
                 app.showToast('Задание выполнено!', 'success');
+                app.updateUI();
             } else {
                 app.showToast('Подписка не подтверждена', 'error');
+                
+                this.isLinkVisited = false; 
+                
                 this.updateButtonUI(btn);
                 btn.disabled = false;
             }
@@ -136,8 +140,9 @@ class MilestoneQuest extends Quest {
             this.isCompleted = true;
             this.vibrate();
             this.updateButtonUI(btn);
-            app.state.updateBalance(apiResult.reward || parseFloat(this.reward));
+            app.state.addToBalance(apiResult.reward);
             app.showToast('Награда получена!', 'success');
+            app.updateUI();
         } else {
             app.showToast('Условие еще не выполнено', 'error');
             this.updateButtonUI(btn);
@@ -154,7 +159,8 @@ class MilestoneQuest extends Quest {
         track.className = 'progress-track';
         
         const fill = document.createElement('div');
-        fill.className = 'progress-fill';
+        // ДОБАВЛЯЕМ КЛАСС completed-fill, если счетчик заполнен
+        fill.className = `progress-fill ${percent >= 100 ? 'completed-fill' : ''}`;
         fill.style.width = `${percent}%`;
 
         const text = document.createElement('div');
@@ -183,14 +189,15 @@ async function initQuests(serverStatuses, app) {
 
     // 2. Превращаем статусы из БД в карту
     const statuses = Array.isArray(serverStatuses) ? serverStatuses : [];
-    const statusMap = new Map(statuses.map(q => [q.quest_id, q.status]));
+    const statusMap = new Map(statuses.map(q => [String(q.quest_id), q.status]));
     
     // Получаем текущее число просмотров для Milestone квестов
     const currentVideoCount = app.state.getCounter('videos_watched');
+    
 
     // 3. Создаем объекты нужных классов
     return QUEST_CONFIG.map(config => {
-        const status = statusMap.get(config.id);
+        const status = statusMap.get(String(config.id));
         const isCompleted = (status === 'completed');
         const isVisited = (status === 'visited' || isCompleted);
 

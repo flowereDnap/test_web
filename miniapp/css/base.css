@@ -112,20 +112,31 @@ body {
 /* ==================== TOASTS ==================== */
 #toast {
     position: fixed;
-    bottom: 80px; 
+    bottom: 90px; /* Над навигацией */
     left: 50%;
-    transform: translateX(-50%);
-    background-color: var(--overlay-bg); 
+    transform: translateX(-50%) translateY(20px); /* Начальная позиция чуть ниже */
+    background: rgba(28, 30, 34, 0.95); /* Твой темный фон */
     color: var(--text-primary);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--radius-sm);
-    z-index: 2000;
+    padding: 12px 24px;
+    border-radius: var(--radius-md);
+    z-index: 3000;
     opacity: 0;
     visibility: hidden;
-    transition: opacity var(--transition-fast), bottom var(--transition-fast);
+    transition: all var(--transition-normal) ease;
+    border: 1px solid var(--border-color);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+    text-align: center;
+    min-width: 200px;
 }
+
 #toast.show {
     opacity: 1;
     visibility: visible;
-    bottom: 90px; 
+    transform: translateX(-50%) translateY(0); /* Выплывает вверх */
 }
+
+/* Индикаторы типов */
+#toast.success { border-bottom: 3px solid #4CAF50; }
+#toast.error { border-bottom: 3px solid #F44336; }
+#toast.info { border-bottom: 3px solid var(--primary-color); }

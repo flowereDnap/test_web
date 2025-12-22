@@ -57,9 +57,7 @@ const detailCommission = document.querySelector('.detail-commission');
 const detailTimeframe = document.querySelector('.detail-timeframe');
 const cashOutBtn = document.getElementById('cash-out-btn'); // Button on the main CASH page
 
-cashOutBtn.addEventListener('click', () => {
-    showCashoutModal()
-});
+
 
 let selectedOption = null;
 
@@ -99,10 +97,13 @@ function renderCashoutOptions() {
  */
 function showCashoutModal() {
     // Reset to step 1 (options selection)
-    cashoutStepOptions.classList.add('active');
     cashoutStepInput.classList.remove('active');
-    cashoutOverlay.classList.add('active');
+    cashoutStepOptions.classList.add('active');
     cashoutBackBtn.style.display = 'none';
+    cashoutCloseBtn.style.display = 'flex';
+
+    // Показываем сам попап
+    cashoutOverlay.classList.add('active');
 }
 
 /**
@@ -114,35 +115,56 @@ function hideCashoutModal() {
     cashoutInput.value = ''; // Clear input on close
 }
 
+function updateInputStepUI(option) {
+    detailMinValue.textContent = `$${option.min_value.toFixed(2)}`;
+    detailCommission.textContent = `${(option.commission * 100).toFixed(0)}%`;
+    detailTimeframe.textContent = `${option.min_time}-${option.max_time} ч.`;
+}
+
+
 /**
  * Switches the modal content to the input step and updates details.
  * @param {object} option - The selected cashout option object.
  */
 function goToInputStep(option) {
     selectedOption = option;
-
-    // Update caption details
-    detailMinValue.textContent = `$${option.min_value.toFixed(2)}`;
-    detailCommission.textContent = `${(option.commission * 100).toFixed(0)}%`;
-    detailTimeframe.textContent = `${option.min_time} - ${option.max_time} ч.`;
-
-    cashoutBackBtn.style.display = 'block';
-
-    // Switch steps with a short delay for a smoother visual transition
-    setTimeout(() => {
-        cashoutStepOptions.classList.remove('active');
-        cashoutStepInput.classList.add('active');
-        cashoutInput.focus();
-    }, 150);
+    updateInputStepUI(option);
+    switchStep('input');
 }
 
 function goToOptionsStep() {
-    cashoutInput.value = ''; // Очищаем поле ввода при возврате
-    selectedOption = null;
-    cashoutBackBtn.style.display = 'none';
-    
-    cashoutStepInput.classList.remove('active');
-    cashoutStepOptions.classList.add('active');
+    switchStep('options');
+}
+
+function switchStep(stepName) {
+    // Определяем, какой шаг активен сейчас
+    const isInput = stepName === 'input';
+
+    // 1. Анимация исчезновения текущего контента
+    const currentActive = isInput ? cashoutStepOptions : cashoutStepInput;
+    const nextStep = isInput ? cashoutStepInput : cashoutStepOptions;
+
+    currentActive.style.opacity = '0';
+    currentActive.style.transform = 'translateX(-10px)';
+
+    setTimeout(() => {
+        // 2. Переключаем классы видимости
+        currentActive.classList.remove('active');
+        nextStep.classList.add('active');
+
+        // 3. Управляем кнопками (Твои константы)
+        if (isInput) {
+            cashoutBackBtn.style.display = 'flex';
+            cashoutCloseBtn.style.display = 'none';
+        } else {
+            cashoutBackBtn.style.display = 'none';
+            cashoutCloseBtn.style.display = 'flex';
+        }
+
+        // 4. Возвращаем прозрачность для новой анимации
+        nextStep.style.opacity = '';
+        nextStep.style.transform = '';
+    }, 200);
 }
 
 // ==================== EVENT HANDLERS ====================
@@ -166,35 +188,6 @@ function handleOptionSelect(e) {
 /**
  * Handles the final cashout confirmation button click.
  */
-function handleConfirmCashout() {
-    const amount = parseFloat(cashoutInput.value);
-    
-    if (!selectedOption) {
-        // This shouldn't happen if the UI flow is correct
-        console.error("No cashout option selected.");
-        return;
-    }
-
-    if (isNaN(amount) || amount <= 0) {
-        // TODO: Replace with a proper toast notification (assuming one exists or will be created)
-        alert('Пожалуйста, введите корректную сумму.');
-        return;
-    }
-    
-    if (amount < selectedOption.min_value) {
-         // TODO: Replace with a proper toast notification
-        alert(`Минимальная сумма вывода для ${selectedOption.name} составляет $${selectedOption.min_value.toFixed(2)}.`);
-        return;
-    }
-
-    // --- LOGIC TO BE IMPLEMENTED LATER ---
-    console.log(`Запрос на вывод $${amount.toFixed(2)} через ${selectedOption.name}. Комиссия: ${selectedOption.commission * 100}%.`);
-    // Placeholder for API call / submission logic
-    
-    // For now, just a success message and close
-    alert('Заявка на вывод принята! (Логика будет реализована позже)');
-    hideCashoutModal();
-}
 
 function handleInputValidation() {
     let value = cashoutInput.value;
@@ -206,12 +199,23 @@ function handleInputValidation() {
 
 function handleConfirmCashout() {
     const amount = parseFloat(cashoutInput.value);
-    
-    // ... (Проверки: selectedOption, isNaN/amount <= 0, amount < min_value) ...
 
-    // ИЗМЕНЕНИЕ 6: Проверка баланса (Пункт 5)
+    if (!selectedOption) return;
+    
+    if (isNaN(amount) || amount <= 0) {
+        alert('Пожалуйста, введите корректную сумму.');
+        return;
+    }
+    
+    if (amount < selectedOption.min_value) {
+        alert(`Минимальная сумма: $${selectedOption.min_value}`);
+        return;
+    }
+
+    userBalance = window.app && window.app.state ? window.app.state.balance : 0
+ 
     if (amount > userBalance) {
-        // Заглушка, позже нужно заменить на более красивое уведомление
+
         alert(`Недостаточно средств. Ваш баланс: $${userBalance.toFixed(2)}.`);
         return;
     }
@@ -221,7 +225,7 @@ function handleConfirmCashout() {
     // Здесь должен быть вызов Telegram.WebApp.sendData или AJAX-запрос
     
     // For now, just a success message and close
-    alert('Заявка на вывод принята! (Логика будет реализована позже)');
+    alert('Заявка на вывод принята!');
     hideCashoutModal();
 }
 
@@ -230,6 +234,10 @@ function handleConfirmCashout() {
 
 // 1. Initial Render
 renderCashoutOptions();
+
+cashOutBtn.addEventListener('click', () => {
+    showCashoutModal()
+});
 
 // 2. Event Listeners
 cashOutBtn.addEventListener('click', showCashoutModal);
