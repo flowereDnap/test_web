@@ -317,14 +317,64 @@ class DailyStatsManager:
             new_users = await conn.fetchval("SELECT COUNT(*) FROM tg_users WHERE created_at::date = $1", today)
             watched = await conn.fetchval("SELECT SUM(watched) FROM videos") or 0
             balance = await conn.fetchval("SELECT SUM(balance) FROM tg_users") or 0
+            # ДОБАВЛЯЕМ СБОР ПРОФИТА С CPA
+            cpa_profit = await conn.fetchval("SELECT SUM(amount) FROM cpa_clicks WHERE updated_at::date = $1", today) or 0
             
             query = """
-            INSERT INTO daily_statistics (stat_date, new_users, videos_watched, total_balance)
-            VALUES ($1, $2, $3, $4)
+            INSERT INTO daily_statistics (stat_date, new_users, videos_watched, total_balance, cpa_profit)
+            VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (stat_date) DO UPDATE SET 
-            new_users = EXCLUDED.new_users, videos_watched = EXCLUDED.videos_watched, total_balance = EXCLUDED.total_balance
+            new_users = EXCLUDED.new_users, 
+            videos_watched = EXCLUDED.videos_watched, 
+            total_balance = EXCLUDED.total_balance,
+            cpa_profit = EXCLUDED.cpa_profit
             """
-            await conn.execute(query, today, new_users, watched, balance)
+            await conn.execute(query, today, new_users, watched, balance, cpa_profit)
+
+# ------------------ CPA & POSTBACKS ------------------
+class CpaDBManager:
+    def __init__(self, pool: asyncpg.pool.Pool):
+        self.pool = pool
+
+    async def create_cpa_table(self):
+        """Создает таблицу для фиксации кликов и постбеков"""
+        query = """
+        CREATE TABLE IF NOT EXISTS cpa_clicks (
+            id BIGSERIAL PRIMARY KEY,
+            click_id TEXT UNIQUE NOT NULL,
+            telegram_id BIGINT REFERENCES tg_users(telegram_id) ON DELETE CASCADE,
+            offer_name TEXT NOT NULL,
+            status TEXT DEFAULT 'click', -- click, registration, deposit
+            amount NUMERIC(18,2) DEFAULT 0,
+            created_at TIMESTAMPTZ DEFAULT now(),
+            updated_at TIMESTAMPTZ DEFAULT now()
+        );
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(query)
+
+    async def register_click(self, click_id: str, telegram_id: int, offer_name: str):
+        """Регистрирует новый переход по ссылке"""
+        query = """
+        INSERT INTO cpa_clicks (click_id, telegram_id, offer_name)
+        VALUES ($1, $2, $3);
+        """
+        async with self.pool.acquire() as conn:
+            await conn.execute(query, click_id, telegram_id, offer_name)
+
+    async def update_click_status(self, click_id: str, status: str, amount: float = 0):
+        """
+        Обновляет статус клика при получении постбека.
+        Возвращает telegram_id пользователя, чтобы начислить ему баланс.
+        """
+        query = """
+        UPDATE cpa_clicks 
+        SET status = $1, amount = amount + $2, updated_at = now()
+        WHERE click_id = $3
+        RETURNING telegram_id;
+        """
+        async with self.pool.acquire() as conn:
+            return await conn.fetchval(query, status, amount, click_id)
 
 # ------------------ DATABASE MANAGER ------------------
 class DatabaseManager:
@@ -337,6 +387,7 @@ class DatabaseManager:
         self.quests_db = None
         self.counters_db = None
         self.daily_stats = None
+        self.cpa_db = None
 
     async def connect(self):
         if not self.pool:
@@ -347,6 +398,7 @@ class DatabaseManager:
         self.quests_db = QuestStatusDBManager(self.db_url, self.pool)
         self.counters_db = CountersDBManager(self.db_url, self.pool)
         self.daily_stats = DailyStatsManager(self)
+        self.cpa_db = CpaDBManager(self.pool)
 
     async def setup(self):
         await self.connect()

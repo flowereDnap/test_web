@@ -174,6 +174,65 @@ class MilestoneQuest extends Quest {
     }
 }
 
+
+
+class CpaQuest extends Quest {
+    constructor(id, title, reward, isCompleted, isVisited) {
+        super(id, title, reward || 'Бонус', isCompleted);
+        this.isVisited = isVisited;
+        this.cachedLink = null; // Здесь сохраним ссылку, чтобы не дергать API лишний раз
+    }
+
+    updateButtonUI(btn) {
+        super.updateButtonUI(btn);
+        if (!this.isCompleted) {
+            // Кнопка ВСЕГДА активна, пока квест не выполнен
+            btn.textContent = this.isVisited ? 'Продолжить' : 'Начать';
+            btn.disabled = false; 
+            
+            // Визуально подсветим, что юзер уже в процессе (опционально)
+            if (this.isVisited) {
+                btn.classList.add('in-progress');
+            }
+        }
+    }
+
+    async onClick(app, btn) {
+        // Если ссылка уже есть в памяти — просто открываем
+        if (this.cachedLink) {
+            window.Telegram.WebApp.openLink(this.cachedLink);
+            return;
+        }
+
+        btn.textContent = '...';
+        try {
+            const response = await fetch('/api/quest/generate_cpa_link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegram_id: app.state.user.id,
+                    quest_id: this.id
+                })
+            });
+            
+            const data = await response.json();
+            
+            if (data.link) {
+                this.isVisited = true;
+                this.cachedLink = data.link; // Кешируем ссылку
+                this.updateButtonUI(btn);
+                window.Telegram.WebApp.openLink(data.link);
+            } else {
+                app.showToast('Ошибка. Попробуйте позже', 'error');
+                this.updateButtonUI(btn);
+            }
+        } catch (e) {
+            app.showToast('Ошибка сети', 'error');
+            this.updateButtonUI(btn);
+        }
+    }
+}
+
 // ==================== III. ЛОГИКА ИНИЦИАЛИЗАЦИИ ====================
 
 async function initQuests(serverStatuses, app) {
@@ -218,6 +277,14 @@ async function initQuests(serverStatuses, app) {
                 config.goal, 
                 currentVideoCount, 
                 isCompleted
+            );
+        } else if (config.type === 'cpa') {
+            return new CpaQuest(
+                config.id,
+                config.title,
+                config.reward > 0 ? `+$${config.reward}` : 'Бонус %',
+                isCompleted,
+                isVisited
             );
         }
         return null;

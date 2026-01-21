@@ -23,7 +23,9 @@ from api.routes import (
     mark_quest_visited,
     get_quest_config_list,
     verify_quest_handler,
-    get_quests_statuses  # Мы переименовали старый check_quest_status в это
+    get_quests_statuses,
+    generate_cpa_link_handler,
+    cpa_postback_handler
 )
 
 # ---------- Жизненный цикл приложения ----------
@@ -128,6 +130,10 @@ async def start_app():
     app.router.add_get('/api/quest/statuses', get_quests_statuses) 
     app.router.add_post('/api/quest/verify', verify_quest_handler)
     app.router.add_post('/api/quest/visited', mark_quest_visited)
+    app.router.add_post('/api/quest/generate_cpa_link', generate_cpa_link_handler)
+    
+    # Публичный эндпоинт для постбеков (без /api/ для краткости, если хочешь)
+    app.router.add_get('/api/cpa/postback', cpa_postback_handler)
 
     # Вебхук
     app.router.add_post(f"{WEBHOOK_PATH}/telegram/{{secret}}", handle_webhook)

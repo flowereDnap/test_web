@@ -1,5 +1,6 @@
 import os
 import aiohttp
+import uuid
 import logging
 from aiohttp import web
 from config import (
@@ -133,6 +134,12 @@ async def verify_quest_handler(request: web.Request):
         else:
             current_count = await db_manager.counters_db.get_counter(telegram_id, 'videos_watched')
             is_valid = current_count >= config.get('goal', 999)
+    
+    elif config['type'] == 'cpa':
+        return web.json_response({
+            "isCompleted": False, 
+            "message": "CPA quests are verified automatically via postback"
+        })
 
     if is_valid:
         reward = config['reward']
@@ -187,3 +194,71 @@ async def get_random_video(request: web.Request):
         vurl = f"https://{host}/{vurl.lstrip('/')}"
 
     return web.json_response({"id": video["id"], "title": video["title"], "video_url": vurl})
+
+async def generate_cpa_link_handler(request: web.Request):
+    """POST /api/quest/generate_cpa_link"""
+    try:
+        data = await request.json()
+        t_id = int(data.get('telegram_id'))
+        q_id = data.get('quest_id')
+        
+        config = QUEST_CONFIG_2.get(q_id)
+        if not config or config.get('type') != 'cpa':
+            return web.json_response({"error": "Invalid CPA quest"}, status=400)
+
+        # Генерация click_id: c_юзер_рандом
+        unique_id = uuid.uuid4().hex[:8]
+        click_id = f"c_{t_id}_{unique_id}"
+
+        db_manager = request.app['db_manager']
+        # Регистрируем клик в новой таблице
+        await db_manager.cpa_db.register_click(click_id, t_id, q_id)
+        
+        # Меняем статус квеста на 'visited' (чтобы кнопка сменилась на "Проверить")
+        await db_manager.quests_db.set_quest_status(t_id, q_id, 'visited')
+
+        # Формируем ссылку. {subid1} — макрос для 1win/Jetton
+        final_link = f"{config['link']}?subid1={click_id}"
+        
+        return web.json_response({'status': 'ok', 'link': final_link})
+    except Exception as e:
+        logger.error(f"CPA Link Gen Error: {e}")
+        return web.json_response({"error": "Internal error"}, status=500)
+
+async def cpa_postback_handler(request: web.Request):
+    """GET /api/cpa/postback (Входящий от партнерки)"""
+    params = request.query
+    click_id = params.get('click_id')
+    action = params.get('action')  # Обычно 'reg' или 'deposit'
+    try:
+        amount = float(params.get('amount', 0))
+    except:
+        amount = 0
+
+    # Логируем входящий запрос (убедись, что RotatingFileHandler настроен в init_bot)
+    logger.info(f"CPA_POSTBACK: click={click_id}, action={action}, amount={amount}")
+
+    if not click_id:
+        return web.Response(status=400, text="Missing click_id")
+
+    db_manager = request.app['db_manager']
+    bot = request.app['bot']
+
+    # 1. Обновляем клик и получаем владельца
+    t_id = await db_manager.cpa_db.update_click_status(click_id, action, amount)
+
+    if t_id:
+        # Находим название квеста по click_id в таблице кликов (через БД)
+        # Для простоты можно заложить логику: если депозит — даем бонус.
+        if action == 'deposit' and amount > 0:
+            # Начисляем 10% от суммы депа как в примере
+            reward = amount * 0.1 
+            await db_manager.users_db.update_balance(t_id, reward)
+            
+            try:
+                await bot.send_message(t_id, f"💰 <b>Бонус зачислен!</b>\nВы получили ${reward:.2f} за депозит в казино.")
+            except: pass
+            
+        return web.Response(status=200, text="OK")
+    
+    return web.Response(status=200, text="Click not found")

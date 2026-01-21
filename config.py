@@ -49,6 +49,13 @@ QUEST_CONFIG = {
         'reward': 0.75,
         'goal': 5,
         'type': 'milestone'
+    },
+    "1win_offer": {
+        "type": "cpa",
+        "title": "Регистрация в 1win",
+        "reward": 0, 
+        "link": "https://1w-example.com/casino",
+        "description": "Зарегистрируйся и получи +10% к первому депозиту!"
     }
 }
 
